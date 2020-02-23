@@ -2,17 +2,15 @@ package main
 
 import (
 	"fmt"
+	"github.com/optiopay/klar/clair"
+	"github.com/optiopay/klar/docker"
+	"github.com/optiopay/klar/utils"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/optiopay/klar/clair"
-	"github.com/optiopay/klar/docker"
-	"github.com/optiopay/klar/utils"
-
-	"gopkg.in/yaml.v2"
 )
 
 //Used to represent the structure of the whitelist YAML file
@@ -119,15 +117,16 @@ type jsonOutput struct {
 }
 
 type config struct {
-	ClairAddr     string
-	ClairOutput   string
-	Threshold     int
-	JSONOutput    bool
-	FormatStyle   string
-	ClairTimeout  time.Duration
-	DockerConfig  docker.Config
-	WhiteListFile string
-	IgnoreUnfixed bool
+	ClairAddr           string
+	ClairOutput         string
+	Threshold           int
+	JSONOutput          bool
+	FormatStyle         string
+	ClairTimeout        time.Duration
+	DockerConfig        docker.Config
+	WhiteListFile       string
+	IgnoreUnfixed       bool
+	ForwardingTargetURL string
 }
 
 func newConfig(args []string) (*config, error) {
