@@ -13,6 +13,12 @@ import (
 
 var store = make(map[string][]*clair.Vulnerability)
 
+type Data struct {
+	Vulnerabilities []*clair.Vulnerability 		 	 `json:"vulnerabilities"`
+	Container        string                          `json:"total,omitempty"`
+	Image   		 string                          `json:"totalCritical,omitempty"`
+}
+
 func maintest() {
 	fail := func(format string, a ...interface{}) {
 		_, _ = fmt.Fprintf(os.Stderr, fmt.Sprintf("%s\n", format), a...)
@@ -119,9 +125,12 @@ func main() {
 		os.Exit(2)
 	}
 
-	if len(os.Args) != 2 {
-		fail("Image name must be provided")
+	if len(os.Args) != 3 {
+		fail("Image name and container name must be provided")
 	}
+
+	imageName := os.Args[1]
+	containerName := os.Args[2]
 
 	conf, err := newConfig(os.Args)
 	if err != nil {
@@ -212,9 +221,15 @@ func main() {
 	}
 
 	if conf.ForwardingTargetURL != "" {
-		marshal, err := json.Marshal(vulnerabilities)
+
+		data := Data {
+			Vulnerabilities: 	vulnerabilities,
+			Container: 			containerName,
+			Image: 				imageName,
+		}
+		marshal, err := json.Marshal(data)
 		if err != nil {
-			fail("Failed to forward, exiting")
+			fail("Failed to forward, exiting...")
 		}
 
 		forwardVulnerabilities(conf.ForwardingTargetURL, marshal)
