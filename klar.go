@@ -2,17 +2,20 @@ package main
 
 import (
 	"fmt"
+	"github.com/containers/image/docker/reference"
 	"github.com/optiopay/klar/docker"
 	"github.com/optiopay/klar/utils"
+	core_v1 "k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/kubernetes/pkg/credentialprovider"
+	cred_prov_secrets "k8s.io/kubernetes/pkg/credentialprovider/secrets"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/discovery"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 //Used to represent the structure of the whitelist YAML file
@@ -151,7 +154,7 @@ func getDockerCreds() (string, string) {
 	pullSecretName := os.Getenv("K8S_IMAGE_PULL_SECRET")
 	if pullSecretName != "" {
 		imageName := os.Args[1]
-
+		namespace := os.Args[4]
 		log.Printf("connecting to K8....")
 		config, err := rest.InClusterConfig()
 		if err != nil {
@@ -159,14 +162,13 @@ func getDockerCreds() (string, string) {
 		}
 
 		clientset, err := kubernetes.NewForConfig(config)
-		secret := clientset.CoreV1().Secrets(namespace).Get(pullSecretName, meta_v1.GetOptions{})
-		slice := []core_v1.Secret{secret}
+		secret, _ := clientset.CoreV1().Secrets(namespace).Get(pullSecretName, meta_v1.GetOptions{})
+		slice := []core_v1.Secret{*secret}
 		var generalKeyRing = credentialprovider.NewDockerKeyring()
 		generalKeyRing, err = cred_prov_secrets.MakeDockerKeyring(slice, generalKeyRing)
 		if err != nil {
 			panic(err.Error())
 		}
-
 		namedImageRef, err := reference.ParseNormalizedNamed(imageName)
 		creds, _ := generalKeyRing.Lookup(namedImageRef.Name())
 		username = creds[0].Username
