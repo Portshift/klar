@@ -1,6 +1,8 @@
 package forwarding
 
-import "github.com/portshift/klar/clair"
+import (
+	"github.com/optiopay/klar/clair"
+)
 
 type ContextualVulnerability struct {
 	Vulnerability *clair.Vulnerability `json:"vulnerability"`

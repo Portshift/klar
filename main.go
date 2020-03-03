@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/optiopay/klar/clair"
 	"github.com/optiopay/klar/docker"
+	"github.com/portshift/klar/forwarding"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -13,23 +14,16 @@ import (
 
 var store = make(map[string][]*clair.Vulnerability)
 
-type ContextualVulnerability struct {
-	Vulnerability *clair.Vulnerability `json:"vulnerability"`
-	Pod           string               `json:"pod,omitempty"`
-	Container     string               `json:"container,omitempty"`
-	Image         string               `json:"image,omitempty"`
-	Namespace     string               `json:"namespace,omitempty"`
-}
 
 func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, containerName string, imageName string, podName string, namespaceName string) error {
-	var scanData []*ContextualVulnerability
+	var scanData []*forwarding.ContextualVulnerability
 
 	// we remove lots of unused data
 	for _, v := range vulnerabilities {
 		v.Metadata = nil   //TODO
 		v.Description = "" //TODO
 
-		contextualVulnerability := &ContextualVulnerability{
+		contextualVulnerability := &forwarding.ContextualVulnerability{
 			Vulnerability: v,
 			Pod:           podName,
 			Container:     containerName,
