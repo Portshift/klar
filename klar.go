@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"github.com/optiopay/klar/docker"
 	"github.com/optiopay/klar/utils"
+	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/discovery"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 //Used to represent the structure of the whitelist YAML file
@@ -76,8 +81,6 @@ func parseBoolOption(key string) bool {
 	return val
 }
 
-
-
 type config struct {
 	ClairAddr           string
 	ClairOutput         string
@@ -91,7 +94,7 @@ type config struct {
 	ForwardingTargetURL string
 }
 
-func newConfig(args []string) (*config, error) {
+func newConfig(args []string, url string) (*config, error) {
 	clairAddr := os.Getenv(optionClairAddress)
 	if clairAddr == "" {
 		return nil, fmt.Errorf("Clair address must be provided\n")
@@ -116,8 +119,7 @@ func newConfig(args []string) (*config, error) {
 		dockerTimeout = 1
 	}
 
-
-	url := args[4]
+	username, password := getDockerCreds()
 
 	return &config{
 		ForwardingTargetURL: url,
@@ -131,8 +133,8 @@ func newConfig(args []string) (*config, error) {
 		WhiteListFile:       os.Getenv(optionWhiteListFile),
 		DockerConfig: docker.Config{
 			ImageName:        args[1],
-			User:             os.Getenv(optionDockerUser),
-			Password:         os.Getenv(optionDockerPassword),
+			User:             username,
+			Password:         password,
 			Token:            os.Getenv(optionDockerToken),
 			InsecureTLS:      parseBoolOption(optionDockerInsecure),
 			InsecureRegistry: parseBoolOption(optionRegistryInsecure),
@@ -143,3 +145,32 @@ func newConfig(args []string) (*config, error) {
 	}, nil
 }
 
+func getDockerCreds() (string, string) {
+	username := os.Getenv(optionDockerUser)
+	password := os.Getenv(optionDockerPassword)
+	pullSecretName := os.Getenv("K8S_IMAGE_PULL_SECRET")
+	if pullSecretName != "" {
+		imageName := os.Args[1]
+
+		log.Printf("connecting to K8....")
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			panic(err.Error())
+		}
+
+		clientset, err := kubernetes.NewForConfig(config)
+		secret := clientset.CoreV1().Secrets(namespace).Get(pullSecretName, meta_v1.GetOptions{})
+		slice := []core_v1.Secret{secret}
+		var generalKeyRing = credentialprovider.NewDockerKeyring()
+		generalKeyRing, err = cred_prov_secrets.MakeDockerKeyring(slice, generalKeyRing)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		namedImageRef, err := reference.ParseNormalizedNamed(imageName)
+		creds, _ := generalKeyRing.Lookup(namedImageRef.Name())
+		username = creds[0].Username
+		password = creds[0].Password
+	}
+	return username, password
+}

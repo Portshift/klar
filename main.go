@@ -85,7 +85,7 @@ func main() {
 		os.Exit(2)
 	}
 	fmt.Printf("ARGS = : %+v", os.Args)
-	if len(os.Args) < 6 {
+	if len(os.Args) < 5 {
 		fail("Image name, container name, pod name and namespace name must be provided (url is optional)")
 	}
 
@@ -93,8 +93,9 @@ func main() {
 	containerName := os.Args[2]
 	podName := os.Args[3]
 	namespaceName := os.Args[4]
+	url := os.Args[5]
 
-	conf, err := newConfig(os.Args)
+	conf, err := newConfig(os.Args, url)
 	if err != nil {
 		fail("Invalid options: %s", err)
 	}
