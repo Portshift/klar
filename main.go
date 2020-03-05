@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Portshift-Admin/klar/clair"
 	"github.com/Portshift-Admin/klar/docker"
 	"github.com/Portshift-Admin/klar/forwarding"
@@ -15,9 +14,10 @@ import (
 	"os"
 )
 
-func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, imageName string) error {
-	var scanData []*forwarding.ContextualVulnerability
+var forwarded = false
 
+func forwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability) error {
+	var scanData []*forwarding.ContextualVulnerability
 	for _, v := range vulnerabilities {
 		contextualVulnerability := &forwarding.ContextualVulnerability{
 			Vulnerability: v,
@@ -27,11 +27,11 @@ func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, 
 	}
 	jsonBody, err := json.Marshal(scanData)
 	if err != nil {
-		_ = fmt.Errorf("failed to forward vulnerabilities: %v", err)
+		log.Errorf("failed to forward vulnerabilities: %v", err)
 		return err
 	}
 	fullUrl := "http://" + url + ":8080/add/"
-	log.Println("URL:>", fullUrl)
+	log.Printf("URL:> %s", fullUrl)
 	buffer := bytes.NewBuffer(jsonBody)
 
 	req, err := http.NewRequest("POST", fullUrl, buffer)
@@ -46,7 +46,7 @@ func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, 
 
 	if err != nil {
 		log.Errorf("failed to forward vulnerabilities: %v", err)
-		log.Printf("RESPONSE:> %+v", resp)
+		log.Printf("RESPONSE STATUS:> %+v", resp.Status)
 		return err
 	}
 	defer resp.Body.Close()
@@ -55,13 +55,13 @@ func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, 
 	log.Printf("response Headers:", resp.Header)
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	log.Printf("response Body:", string(respBody))
-
+	forwarded = true
 	return nil
 }
 
 func getArgs() (string, string, error) {
 	if len(os.Args) < 2 {
-		return  "", "", errors.New("image name  must be provided (forwarding url is optional)")
+		return "", "", errors.New("image name  must be provided (forwarding url is optional)")
 	}
 	imageName := os.Args[1]
 
@@ -89,7 +89,7 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 		log.Errorf("Can't pull fsLayers")
 		os.Exit(2)
 	} else {
-		fmt.Printf("Analysing %d layers\n", len(image.FsLayers))
+		log.Printf("Analysing %d layers\n", len(image.FsLayers))
 	}
 
 	var vulnerabilities []*clair.Vulnerability
@@ -100,7 +100,7 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 			log.Errorf("Failed to analyze using API v%d: %s\n", ver, err)
 		} else {
 			if !conf.JSONOutput {
-				fmt.Printf("Got results from Clair API v%d\n", ver)
+				log.Printf("Got results from Clair API v%d\n", ver)
 			}
 			break
 		}
@@ -110,11 +110,14 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 
 // created by Rafael Seidel @ Portshift
 func main() {
+
 	imageName, url, err := getArgs()
 	if err != nil {
 		log.Errorf("invalid args: %v", err)
 		os.Exit(2)
 	}
+
+	defer SendResultsIfNeeded(url, imageName)
 
 	conf, err := newConfig(os.Args, url)
 	if err != nil {
@@ -130,19 +133,33 @@ func main() {
 
 	vsNumber := 0
 
-	fmt.Printf("Found %d vulnerabilities\n", len(vulnerabilities))
+	log.Printf("RAFI: Found %d vulnerabilities\n", len(vulnerabilities))
 
 	vsNumber = printVulnerabilities(conf, vulnerabilities)
 
 	if conf.ForwardingTargetURL != "" {
-		err := forwardVulnerabilities(conf.ForwardingTargetURL, vulnerabilities, imageName)
-		if err != nil {
-			_ = fmt.Errorf("failed to forward vulnerabilities: %v", err)
-			os.Exit(2)
+		if len(vulnerabilities) == 0 {
+			log.Printf("There were no vulnerabilities! nothing to forward")
+		} else {
+			err := forwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities)
+			if err != nil {
+				log.Errorf("failed to forward vulnerabilities: %v", err)
+				os.Exit(2)
+			}
 		}
 	}
 
 	if vsNumber > conf.Threshold {
 		os.Exit(1)
+	}
+}
+
+func SendResultsIfNeeded(url string, imageName string) {
+	if !forwarded {
+		err := forwardVulnerabilities(url, imageName, []*clair.Vulnerability{})
+		if err != nil {
+			log.Errorf("failed to SendResultsIfNeeded: %v", err)
+			os.Exit(2)
+		}
 	}
 }
