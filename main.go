@@ -15,16 +15,13 @@ import (
 	"os"
 )
 
-func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, containerName string, imageName string, podName string, namespaceName string) error {
+func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, imageName string) error {
 	var scanData []*forwarding.ContextualVulnerability
 
 	for _, v := range vulnerabilities {
 		contextualVulnerability := &forwarding.ContextualVulnerability{
 			Vulnerability: v,
-			Pod:           podName,
-			Container:     containerName,
 			Image:         imageName,
-			Namespace:     namespaceName,
 		}
 		scanData = append(scanData, contextualVulnerability)
 	}
@@ -62,20 +59,17 @@ func forwardVulnerabilities(url string, vulnerabilities []*clair.Vulnerability, 
 	return nil
 }
 
-func getArgs() (string, string, string, string, string, error) {
-	if len(os.Args) < 5 {
-		return "", "", "", "", "", errors.New("image name, container name, pod name and namespace name must be provided (forwarding url is optional)")
+func getArgs() (string, string, error) {
+	if len(os.Args) < 2 {
+		return  "", "", errors.New("image name  must be provided (forwarding url is optional)")
 	}
 	imageName := os.Args[1]
-	containerName := os.Args[2]
-	podName := os.Args[3]
-	namespaceName := os.Args[4]
 
 	url := ""
-	if len(os.Args) >= 5 {
-		url = os.Args[5]
+	if len(os.Args) >= 3 {
+		url = os.Args[2]
 	}
-	return imageName, containerName, podName, namespaceName, url, nil
+	return imageName, url, nil
 }
 
 func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
@@ -116,7 +110,7 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 
 // created by Rafael Seidel @ Portshift
 func main() {
-	imageName, containerName, podName, namespaceName, url, err := getArgs()
+	imageName, url, err := getArgs()
 	if err != nil {
 		log.Errorf("invalid args: %v", err)
 		os.Exit(2)
@@ -141,7 +135,7 @@ func main() {
 	vsNumber = printVulnerabilities(conf, vulnerabilities)
 
 	if conf.ForwardingTargetURL != "" {
-		err := forwardVulnerabilities(conf.ForwardingTargetURL, vulnerabilities, containerName, imageName, podName, namespaceName)
+		err := forwardVulnerabilities(conf.ForwardingTargetURL, vulnerabilities, imageName)
 		if err != nil {
 			_ = fmt.Errorf("failed to forward vulnerabilities: %v", err)
 			os.Exit(2)
