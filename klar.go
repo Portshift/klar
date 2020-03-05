@@ -1,16 +1,15 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/containers/image/docker/reference"
 	"github.com/optiopay/klar/docker"
-	"github.com/optiopay/klar/utils"
-	core_v1 "k8s.io/api/core/v1"
+	"github.com/portshift/klar/utils"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/credentialprovider"
-	cred_prov_secrets "k8s.io/kubernetes/pkg/credentialprovider/secrets"
-	"log"
+	credprovsecrets "k8s.io/kubernetes/pkg/credentialprovider/secrets"
 	"os"
 	"strconv"
 	"strings"
@@ -121,7 +120,7 @@ func newConfig(args []string, url string) (*config, error) {
 		dockerTimeout = 1
 	}
 
-	username, password := getDockerCreds()
+	username, password := getSecretDockerCredentialsFromK8()
 
 	return &config{
 		ForwardingTargetURL: url,
@@ -147,58 +146,39 @@ func newConfig(args []string, url string) (*config, error) {
 	}, nil
 }
 
-func getDockerCreds() (string, string) {
+func getSecretDockerCredentialsFromK8() (string, string) {
 	username := os.Getenv(optionDockerUser)
 	password := os.Getenv(optionDockerPassword)
 	secretJsonBody := os.Getenv("K8S_IMAGE_PULL_SECRET")
 	if secretJsonBody != "" {
 		imageName := os.Args[1]
-		namespace := os.Args[4]
-		log.Printf("connecting to K8....")
-		log.Printf("RAFI to K8....")
-		log.Printf("secretJsonBody: %+v", secretJsonBody)
-		log.Printf("imageName: %+v", imageName)
-		log.Printf("namespace: %+v", namespace)
 
 		secretDataMap := make(map[string][]byte)
 
-		var secretData []byte
-		err := json.Unmarshal([]byte(secretJsonBody), &secretData)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		secretDataMap[core_v1.DockerConfigJsonKey] = secretData
-		slice := []core_v1.Secret{{
+		secretDataMap[corev1.DockerConfigJsonKey] = []byte(secretJsonBody)
+		secrets := []corev1.Secret{{
 			TypeMeta:   v1.TypeMeta{},
 			ObjectMeta: v1.ObjectMeta{},
 			Data:       secretDataMap,
 			StringData: nil,
-			Type:       core_v1.SecretTypeDockerConfigJson,
+			Type:       corev1.SecretTypeDockerConfigJson,
 		}}
-		log.Printf("RAFI: NEW SECERT: %+v", slice)
-
-		//v1.SecretTypeDockerConfigJson
-
-		//{
-		//	"auths":{
-		//	"registry.gitlab.com":{
-		//		"username":"gitlab+deploy-token-31516", "password":"35Qy_xhXmwGT9HYy1xrc", "email":"gitlab@portshift.io", "auth":"Z2l0bGFiK2RlcGxveS10b2tlbi0zMTUxNjozNVF5X3hoWG13R1Q5SFl5MXhyYw=="
-		//	}
-		//}
-		//}
 
 		var generalKeyRing = credentialprovider.NewDockerKeyring()
-		generalKeyRing, err = cred_prov_secrets.MakeDockerKeyring(slice, generalKeyRing)
+		generalKeyRing, err := credprovsecrets.MakeDockerKeyring(secrets, generalKeyRing)
 		if err != nil {
 			panic(err.Error())
 		}
 		namedImageRef, err := reference.ParseNormalizedNamed(imageName)
-		creds, _ := generalKeyRing.Lookup(namedImageRef.Name())
-		log.Printf("RAFI: creds: %+v", creds)
-
-		username = creds[0].Username
-		password = creds[0].Password
+		if err != nil {
+			panic(err.Error())
+		}
+		credentials, _ := generalKeyRing.Lookup(namedImageRef.Name())
+		if len(credentials) != 1 {
+			panic(errors.New("failed to get secret docker credentials"))
+		}
+		username = credentials[0].Username
+		password = credentials[0].Password
 	}
 	return username, password
 }
