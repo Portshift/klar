@@ -6,7 +6,6 @@ require (
 	github.com/containers/image v3.0.2+incompatible
 	github.com/coreos/clair v2.0.1-0.20180717235726-b1cd09231990+incompatible
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
-	github.com/portshift/klar v2.4.1+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	google.golang.org/grpc v1.24.0
