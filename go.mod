@@ -1,4 +1,4 @@
-module github.com/optiopay/klar
+module github.com/Portshift-Admin/klar
 
 go 1.13
 

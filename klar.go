@@ -3,9 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/Portshift-Admin/klar/docker"
+	"github.com/Portshift-Admin/klar/utils"
 	"github.com/containers/image/docker/reference"
-	"github.com/optiopay/klar/docker"
-	"github.com/portshift/klar/utils"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/credentialprovider"

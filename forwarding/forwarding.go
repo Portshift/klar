@@ -1,7 +1,7 @@
 package forwarding
 
 import (
-	"github.com/optiopay/klar/clair"
+	"github.com/Portshift-Admin/klar/clair"
 )
 
 type ContextualVulnerability struct {

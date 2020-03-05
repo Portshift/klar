@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/optiopay/klar/clair"
+	"github.com/Portshift-Admin/klar/clair"
 )
 
 func mockVulnerability(name string) *clair.Vulnerability {

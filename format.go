@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/optiopay/klar/clair"
+	"github.com/Portshift-Admin/klar/clair"
 )
 
 var store = make(map[string][]*clair.Vulnerability)

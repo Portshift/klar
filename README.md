@@ -7,7 +7,7 @@ Klar serves as a client which coordinates the image checks between the Docker re
 
 ## Binary installation
 
-The simplest way is to download the latest release (for OSX and Linux) from https://github.com/optiopay/klar/releases/ and put the binary in a folder in your `PATH` (make sure it has execute permission).
+The simplest way is to download the latest release (for OSX and Linux) from https://github.com/Portshift-Admin/klar/releases/ and put the binary in a folder in your `PATH` (make sure it has execute permission).
 
 ## Installation from source code
 
@@ -15,7 +15,7 @@ Make sure you have Go language compiler installed and configured https://golang.
 
 Then run
 
-    go get github.com/optiopay/klar
+    go get github.com/Portshift-Admin/klar
 
 make sure your Go binary folder is in your `PATH` (e.g. `export PATH=$PATH:/usr/local/go/bin`)
 
@@ -71,7 +71,7 @@ You can enable more verbose output but setting `KLAR_TRACE` to true.
 
 ## Dockerized version
 
-Klar can be dockerized. Go to `$GOPATH/src/github.com/optiopay/klar` and build Klar in project root. If you are on Linux:
+Klar can be dockerized. Go to `$GOPATH/src/github.com/Portshift-Admin/klar` and build Klar in project root. If you are on Linux:
 
     CGO_ENABLED=0 go build -a -installsuffix cgo .
 

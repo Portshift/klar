@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Portshift-Admin/klar/docker"
 	"github.com/coreos/clair/api/v3/clairpb"
-	"github.com/optiopay/klar/docker"
 	"google.golang.org/grpc"
 )
 
