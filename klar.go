@@ -1,18 +1,19 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"github.com/containers/image/docker/reference"
 	"github.com/optiopay/klar/docker"
-	"github.com/optiopay/klar/utils"
-	"log"
+	"github.com/portshift/klar/utils"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/credentialprovider"
+	credprovsecrets "k8s.io/kubernetes/pkg/credentialprovider/secrets"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/discovery"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 //Used to represent the structure of the whitelist YAML file
@@ -119,7 +120,7 @@ func newConfig(args []string, url string) (*config, error) {
 		dockerTimeout = 1
 	}
 
-	username, password := getDockerCreds()
+	username, password := getSecretDockerCredentialsFromK8()
 
 	return &config{
 		ForwardingTargetURL: url,
@@ -145,32 +146,39 @@ func newConfig(args []string, url string) (*config, error) {
 	}, nil
 }
 
-func getDockerCreds() (string, string) {
+func getSecretDockerCredentialsFromK8() (string, string) {
 	username := os.Getenv(optionDockerUser)
 	password := os.Getenv(optionDockerPassword)
-	pullSecretName := os.Getenv("K8S_IMAGE_PULL_SECRET")
-	if pullSecretName != "" {
+	secretJsonBody := os.Getenv("K8S_IMAGE_PULL_SECRET")
+	if secretJsonBody != "" {
 		imageName := os.Args[1]
 
-		log.Printf("connecting to K8....")
-		config, err := rest.InClusterConfig()
-		if err != nil {
-			panic(err.Error())
-		}
+		secretDataMap := make(map[string][]byte)
 
-		clientset, err := kubernetes.NewForConfig(config)
-		secret := clientset.CoreV1().Secrets(namespace).Get(pullSecretName, meta_v1.GetOptions{})
-		slice := []core_v1.Secret{secret}
+		secretDataMap[corev1.DockerConfigJsonKey] = []byte(secretJsonBody)
+		secrets := []corev1.Secret{{
+			TypeMeta:   v1.TypeMeta{},
+			ObjectMeta: v1.ObjectMeta{},
+			Data:       secretDataMap,
+			StringData: nil,
+			Type:       corev1.SecretTypeDockerConfigJson,
+		}}
+
 		var generalKeyRing = credentialprovider.NewDockerKeyring()
-		generalKeyRing, err = cred_prov_secrets.MakeDockerKeyring(slice, generalKeyRing)
+		generalKeyRing, err := credprovsecrets.MakeDockerKeyring(secrets, generalKeyRing)
 		if err != nil {
 			panic(err.Error())
 		}
-
 		namedImageRef, err := reference.ParseNormalizedNamed(imageName)
-		creds, _ := generalKeyRing.Lookup(namedImageRef.Name())
-		username = creds[0].Username
-		password = creds[0].Password
+		if err != nil {
+			panic(err.Error())
+		}
+		credentials, _ := generalKeyRing.Lookup(namedImageRef.Name())
+		if len(credentials) != 1 {
+			panic(errors.New("failed to get secret docker credentials"))
+		}
+		username = credentials[0].Username
+		password = credentials[0].Password
 	}
 	return username, password
 }
