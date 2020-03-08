@@ -86,18 +86,18 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 	image, err := docker.NewImage(&conf.DockerConfig)
 	if err != nil {
 		log.Errorf("Can't parse name: %v", err)
-		os.Exit(2)
+		return err, nil
 	}
 
 	err = image.Pull()
 	if err != nil {
 		log.Errorf("Can't pull image: %v", err)
-		os.Exit(2)
+		return err, nil
 	}
 
 	if len(image.FsLayers) == 0 {
 		log.Errorf("Can't pull fsLayers")
-		os.Exit(2)
+		return err, nil
 	} else {
 		log.Infof("Analysing %d layers\n", len(image.FsLayers))
 	}
@@ -118,7 +118,6 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 	return err, vulnerabilities
 }
 
-// created by Rafael Seidel @ Portshift
 func main() {
 
 	imageName, url, err := getArgs()
