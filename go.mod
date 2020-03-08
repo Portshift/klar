@@ -6,8 +6,6 @@ require (
 	github.com/containers/image v3.0.2+incompatible
 	github.com/coreos/clair v2.0.1-0.20180717235726-b1cd09231990+incompatible
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
-	github.com/optiopay/klar v2.4.0+incompatible // indirect
-	github.com/portshift/klar v2.4.1+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	google.golang.org/grpc v1.24.0
 	k8s.io/api v0.17.3
