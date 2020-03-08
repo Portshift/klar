@@ -18,22 +18,20 @@ var forwarded = false
 
 func SendResultsIfNeeded(url string, imageName string) {
 	if !forwarded {
+		log.Infof("Sending empty results")
 		err := forwardVulnerabilities(url, imageName, []*clair.Vulnerability{})
 		if err != nil {
 			log.Errorf("failed to SendResultsIfNeeded: %v", err)
 			os.Exit(2)
 		}
+		log.Infof("Sent empty results!")
 	}
 }
 
 func forwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability) error {
-	var scanData []*forwarding.ContextualVulnerability
-	for _, v := range vulnerabilities {
-		contextualVulnerability := &forwarding.ContextualVulnerability{
-			Vulnerability: v,
-			Image:         imageName,
-		}
-		scanData = append(scanData, contextualVulnerability)
+	scanData := &forwarding.ContextualVulnerabilities{
+		Vulnerabilities: vulnerabilities,
+		Image:           imageName,
 	}
 	jsonBody, err := json.Marshal(scanData)
 	if err != nil {
@@ -118,26 +116,29 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 	return err, vulnerabilities
 }
 
-func main() {
+func exit(code int, url string, imageName string) {
+	SendResultsIfNeeded(url, imageName)
+	os.Exit(code)
+}
 
+func main() {
 	imageName, url, err := getArgs()
 	if err != nil {
 		log.Errorf("invalid args: %v", err)
-		os.Exit(2)
+		exit(2, url, imageName)
 	}
-
-	defer SendResultsIfNeeded(url, imageName)
 
 	conf, err := newConfig(os.Args, url)
 	if err != nil {
 		log.Errorf("Invalid options: %v", err)
-		os.Exit(2)
+		exit(2, url, imageName)
 	}
+	defer SendResultsIfNeeded(url, imageName)
 
 	err, vulnerabilities := executeScan(err, conf)
 	if err != nil {
 		log.Errorf("Failed to analyze, exiting...")
-		os.Exit(2)
+		exit(2, url, imageName)
 	}
 
 	log.Infof("Found %d vulnerabilities\n", len(vulnerabilities))
@@ -148,16 +149,15 @@ func main() {
 	if conf.ForwardingTargetURL != "" {
 		if len(vulnerabilities) == 0 {
 			log.Infof("There were no vulnerabilities! nothing to forward")
-		} else {
-			err := forwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities)
-			if err != nil {
-				log.Errorf("failed to forward vulnerabilities: %v", err)
-				os.Exit(2)
-			}
+		}
+		err := forwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities)
+		if err != nil {
+			log.Errorf("failed to forward vulnerabilities: %v", err)
+			exit(2, url, imageName)
 		}
 	}
 
 	if vsNumber > conf.Threshold {
-		os.Exit(1)
+		exit(1, url, imageName)
 	}
 }
