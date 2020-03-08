@@ -16,6 +16,16 @@ import (
 
 var forwarded = false
 
+func SendResultsIfNeeded(url string, imageName string) {
+	if !forwarded {
+		err := forwardVulnerabilities(url, imageName, []*clair.Vulnerability{})
+		if err != nil {
+			log.Errorf("failed to SendResultsIfNeeded: %v", err)
+			os.Exit(2)
+		}
+	}
+}
+
 func forwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability) error {
 	var scanData []*forwarding.ContextualVulnerability
 	for _, v := range vulnerabilities {
@@ -31,7 +41,7 @@ func forwardVulnerabilities(url string, imageName string, vulnerabilities []*cla
 		return err
 	}
 	fullUrl := "http://" + url + ":8080/add/"
-	log.Printf("URL:> %s", fullUrl)
+	log.Infof("URL:> %s", fullUrl)
 	buffer := bytes.NewBuffer(jsonBody)
 
 	req, err := http.NewRequest("POST", fullUrl, buffer)
@@ -46,15 +56,15 @@ func forwardVulnerabilities(url string, imageName string, vulnerabilities []*cla
 
 	if err != nil {
 		log.Errorf("failed to forward vulnerabilities: %v", err)
-		log.Printf("RESPONSE STATUS:> %+v", resp.Status)
+		log.Infof("response Status:", resp.Status)
 		return err
 	}
 	defer resp.Body.Close()
 
-	log.Printf("response Status:", resp.Status)
-	log.Printf("response Headers:", resp.Header)
+	log.Infof("response Status:", resp.Status)
+	log.Trace("response Headers:", resp.Header)
 	respBody, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("response Body:", string(respBody))
+	log.Trace("response Body:", string(respBody))
 	forwarded = true
 	return nil
 }
@@ -89,7 +99,7 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 		log.Errorf("Can't pull fsLayers")
 		os.Exit(2)
 	} else {
-		log.Printf("Analysing %d layers\n", len(image.FsLayers))
+		log.Infof("Analysing %d layers\n", len(image.FsLayers))
 	}
 
 	var vulnerabilities []*clair.Vulnerability
@@ -100,7 +110,7 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 			log.Errorf("Failed to analyze using API v%d: %s\n", ver, err)
 		} else {
 			if !conf.JSONOutput {
-				log.Printf("Got results from Clair API v%d\n", ver)
+				log.Infof("Got results from Clair API v%d\n", ver)
 			}
 			break
 		}
@@ -131,15 +141,14 @@ func main() {
 		os.Exit(2)
 	}
 
+	log.Infof("Found %d vulnerabilities\n", len(vulnerabilities))
+
 	vsNumber := 0
-
-	log.Printf("RAFI: Found %d vulnerabilities\n", len(vulnerabilities))
-
 	vsNumber = printVulnerabilities(conf, vulnerabilities)
 
 	if conf.ForwardingTargetURL != "" {
 		if len(vulnerabilities) == 0 {
-			log.Printf("There were no vulnerabilities! nothing to forward")
+			log.Infof("There were no vulnerabilities! nothing to forward")
 		} else {
 			err := forwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities)
 			if err != nil {
@@ -151,15 +160,5 @@ func main() {
 
 	if vsNumber > conf.Threshold {
 		os.Exit(1)
-	}
-}
-
-func SendResultsIfNeeded(url string, imageName string) {
-	if !forwarded {
-		err := forwardVulnerabilities(url, imageName, []*clair.Vulnerability{})
-		if err != nil {
-			log.Errorf("failed to SendResultsIfNeeded: %v", err)
-			os.Exit(2)
-		}
 	}
 }
