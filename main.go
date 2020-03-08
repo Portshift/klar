@@ -29,7 +29,7 @@ func SendResultsIfNeeded(url string, imageName string) {
 }
 
 func forwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability) error {
-	scanData := &forwarding.ContextualVulnerabilities{
+	scanData := &forwarding.ImageVulnerabilities{
 		Vulnerabilities: vulnerabilities,
 		Image:           imageName,
 	}
