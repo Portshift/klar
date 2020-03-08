@@ -19,7 +19,7 @@ var forwarded = false
 func SendResultsIfNeeded(url string, imageName string) {
 	if !forwarded {
 		log.Infof("Sending empty results")
-		err := forwardVulnerabilities(url, imageName, []*clair.Vulnerability{})
+		err := forwardVulnerabilities(url, imageName, []*clair.Vulnerability{}, false)
 		if err != nil {
 			log.Errorf("failed to SendResultsIfNeeded: %v", err)
 			os.Exit(2)
@@ -28,10 +28,11 @@ func SendResultsIfNeeded(url string, imageName string) {
 	}
 }
 
-func forwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability) error {
+func forwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability, success bool) error {
 	scanData := &forwarding.ImageVulnerabilities{
 		Vulnerabilities: vulnerabilities,
 		Image:           imageName,
+		Success:         success,
 	}
 	jsonBody, err := json.Marshal(scanData)
 	if err != nil {
@@ -150,7 +151,7 @@ func main() {
 		if len(vulnerabilities) == 0 {
 			log.Infof("There were no vulnerabilities! nothing to forward")
 		}
-		err := forwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities)
+		err := forwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities, true)
 		if err != nil {
 			log.Errorf("failed to forward vulnerabilities: %v", err)
 			exit(2, url, imageName)

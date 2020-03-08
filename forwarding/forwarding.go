@@ -7,4 +7,5 @@ import (
 type ImageVulnerabilities struct {
 	Vulnerabilities []*clair.Vulnerability `json:"vulnerability"`
 	Image           string                 `json:"image,omitempty"`
+	Success         bool                   `json:"success,omitempty"`
 }
