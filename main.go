@@ -2,70 +2,24 @@ package main
 
 // created by Rafael Seidel @ Portshift
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"github.com/Portshift-Admin/klar/clair"
 	"github.com/Portshift-Admin/klar/docker"
 	"github.com/Portshift-Admin/klar/forwarding"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
-	"net/http"
 	"os"
 )
 
-var forwarded = false
-
-func SendResultsIfNeeded(url string, imageName string) {
-	if !forwarded {
-		log.Infof("Sending empty results")
-		err := forwardVulnerabilities(url, imageName, []*clair.Vulnerability{}, false)
-		if err != nil {
-			log.Errorf("failed to SendResultsIfNeeded: %v", err)
-			os.Exit(2)
-		}
-		log.Infof("Sent empty results!")
+func sendResultsIfNeeded(url string, imageName string) {
+	err := forwarding.SendResultsIfNeeded(url, imageName)
+	if err != nil {
+		log.Errorf("failed to SendResultsIfNeeded: %v", err)
 	}
 }
 
-func forwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability, success bool) error {
-	scanData := &forwarding.ImageVulnerabilities{
-		Vulnerabilities: vulnerabilities,
-		Image:           imageName,
-		Success:         success,
-	}
-	jsonBody, err := json.Marshal(scanData)
-	if err != nil {
-		log.Errorf("failed to forward vulnerabilities: %v", err)
-		return err
-	}
-	fullUrl := "http://" + url + ":8080/add/"
-	log.Infof("URL:> %s", fullUrl)
-	buffer := bytes.NewBuffer(jsonBody)
-
-	req, err := http.NewRequest("POST", fullUrl, buffer)
-	if err != nil {
-		log.Errorf("failed to forward vulnerabilities: %v", err)
-		return err
-	}
-	req.Close = true
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-
-	if err != nil {
-		log.Errorf("failed to forward vulnerabilities: %v", err)
-		log.Infof("response Status:", resp.Status)
-		return err
-	}
-	defer resp.Body.Close()
-
-	log.Infof("response Status:", resp.Status)
-	log.Trace("response Headers:", resp.Header)
-	respBody, _ := ioutil.ReadAll(resp.Body)
-	log.Trace("response Body:", string(respBody))
-	forwarded = true
-	return nil
+func exit(code int, url string, imageName string) {
+	sendResultsIfNeeded(url, imageName)
+	os.Exit(code)
 }
 
 func getArgs() (string, string, error) {
@@ -117,11 +71,6 @@ func executeScan(err error, conf *config) (error, []*clair.Vulnerability) {
 	return err, vulnerabilities
 }
 
-func exit(code int, url string, imageName string) {
-	SendResultsIfNeeded(url, imageName)
-	os.Exit(code)
-}
-
 func main() {
 	imageName, url, err := getArgs()
 	if err != nil {
@@ -134,7 +83,7 @@ func main() {
 		log.Errorf("Invalid options: %v", err)
 		exit(2, url, imageName)
 	}
-	defer SendResultsIfNeeded(url, imageName)
+	defer sendResultsIfNeeded(url, imageName)
 
 	err, vulnerabilities := executeScan(err, conf)
 	if err != nil {
@@ -151,7 +100,7 @@ func main() {
 		if len(vulnerabilities) == 0 {
 			log.Infof("There were no vulnerabilities! nothing to forward")
 		}
-		err := forwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities, true)
+		err := forwarding.ForwardVulnerabilities(conf.ForwardingTargetURL, imageName, vulnerabilities, true)
 		if err != nil {
 			log.Errorf("failed to forward vulnerabilities: %v", err)
 			exit(2, url, imageName)
