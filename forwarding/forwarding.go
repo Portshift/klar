@@ -13,8 +13,8 @@ var forwarded = false
 
 type ImageVulnerabilities struct {
 	Vulnerabilities []*clair.Vulnerability `json:"vulnerability"`
-	Image           string                 `json:"image,omitempty"`
-	Success         bool                   `json:"success,omitempty"`
+	Image           string                 `json:"image"`
+	Success         bool                   `json:"success"`
 }
 
 func SendResultsIfNeeded(url string, imageName string) error {
