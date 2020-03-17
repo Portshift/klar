@@ -107,7 +107,7 @@ func main() {
 		}
 	}
 
-	if vsNumber > conf.Threshold {
+	if conf.Threshold != 0 && vsNumber > conf.Threshold {
 		exit(1, url, imageName)
 	}
 }
