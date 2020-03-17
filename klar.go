@@ -1,15 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/Portshift-Admin/klar/docker"
+	secrets "github.com/Portshift-Admin/klar/kubernetes"
 	"github.com/Portshift-Admin/klar/utils"
-	"github.com/containers/image/docker/reference"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/credentialprovider"
-	credprovsecrets "k8s.io/kubernetes/pkg/credentialprovider/secrets"
 	"os"
 	"strconv"
 	"strings"
@@ -120,7 +115,10 @@ func newConfig(args []string, url string) (*config, error) {
 		dockerTimeout = 1
 	}
 
-	username, password := getSecretDockerCredentialsFromK8()
+	username, password, err := secrets.GetSecretDockerCredentialsFromK8(os.Getenv(optionDockerUser), os.Getenv(optionDockerPassword))
+	if err != nil {
+		return nil, err
+	}
 
 	return &config{
 		ForwardingTargetURL: url,
@@ -144,41 +142,4 @@ func newConfig(args []string, url string) (*config, error) {
 			PlatformArch:     os.Getenv(optionDockerPlatformArch),
 		},
 	}, nil
-}
-
-func getSecretDockerCredentialsFromK8() (string, string) {
-	username := os.Getenv(optionDockerUser)
-	password := os.Getenv(optionDockerPassword)
-	secretJsonBody := os.Getenv("K8S_IMAGE_PULL_SECRET")
-	if secretJsonBody != "" {
-		imageName := os.Args[1]
-
-		secretDataMap := make(map[string][]byte)
-
-		secretDataMap[corev1.DockerConfigJsonKey] = []byte(secretJsonBody)
-		secrets := []corev1.Secret{{
-			TypeMeta:   v1.TypeMeta{},
-			ObjectMeta: v1.ObjectMeta{},
-			Data:       secretDataMap,
-			StringData: nil,
-			Type:       corev1.SecretTypeDockerConfigJson,
-		}}
-
-		var generalKeyRing = credentialprovider.NewDockerKeyring()
-		generalKeyRing, err := credprovsecrets.MakeDockerKeyring(secrets, generalKeyRing)
-		if err != nil {
-			panic(err.Error())
-		}
-		namedImageRef, err := reference.ParseNormalizedNamed(imageName)
-		if err != nil {
-			panic(err.Error())
-		}
-		credentials, _ := generalKeyRing.Lookup(namedImageRef.Name())
-		if len(credentials) != 1 {
-			panic(errors.New("failed to get secret docker credentials"))
-		}
-		username = credentials[0].Username
-		password = credentials[0].Password
-	}
-	return username, password
 }
