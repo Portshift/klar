@@ -35,6 +35,7 @@ const (
 	optionRegistryInsecure   = "REGISTRY_INSECURE"
 	optionWhiteListFile      = "WHITELIST_FILE"
 	optionIgnoreUnfixed      = "IGNORE_UNFIXED"
+	optionResultServicePath  = "RESULT_SERVICE_PATH"
 )
 
 var priorities = []string{"Unknown", "Negligible", "Low", "Medium", "High", "Critical", "Defcon1"}
@@ -78,22 +79,22 @@ func parseBoolOption(key string) bool {
 }
 
 type config struct {
-	ClairAddr           string
-	ClairOutput         string
-	Threshold           int
-	JSONOutput          bool
-	FormatStyle         string
-	ClairTimeout        time.Duration
-	DockerConfig        docker.Config
-	WhiteListFile       string
-	IgnoreUnfixed       bool
-	ForwardingTargetURL string
+	ClairAddr         string
+	ClairOutput       string
+	Threshold         int
+	JSONOutput        bool
+	FormatStyle       string
+	ClairTimeout      time.Duration
+	DockerConfig      docker.Config
+	WhiteListFile     string
+	IgnoreUnfixed     bool
+	ResultServicePath string
 }
 
-func newConfig(args []string, url string) (*config, error) {
+func newConfig(imageName string) (*config, error) {
 	clairAddr := os.Getenv(optionClairAddress)
 	if clairAddr == "" {
-		return nil, fmt.Errorf("Clair address must be provided\n")
+		return nil, fmt.Errorf("clair address must be provided")
 	}
 
 	if os.Getenv(optionKlarTrace) != "" {
@@ -121,17 +122,17 @@ func newConfig(args []string, url string) (*config, error) {
 	}
 
 	return &config{
-		ForwardingTargetURL: url,
-		ClairAddr:           clairAddr,
-		ClairOutput:         clairOutput,
-		Threshold:           parseIntOption(optionClairThreshold),
-		JSONOutput:          false,
-		FormatStyle:         "standard",
-		IgnoreUnfixed:       parseBoolOption(optionIgnoreUnfixed),
-		ClairTimeout:        time.Duration(clairTimeout) * time.Minute,
-		WhiteListFile:       os.Getenv(optionWhiteListFile),
+		ResultServicePath: os.Getenv(optionResultServicePath),
+		ClairAddr:         clairAddr,
+		ClairOutput:       clairOutput,
+		Threshold:         parseIntOption(optionClairThreshold),
+		JSONOutput:        false,
+		FormatStyle:       "standard",
+		IgnoreUnfixed:     parseBoolOption(optionIgnoreUnfixed),
+		ClairTimeout:      time.Duration(clairTimeout) * time.Minute,
+		WhiteListFile:     os.Getenv(optionWhiteListFile),
 		DockerConfig: docker.Config{
-			ImageName:        args[1],
+			ImageName:        imageName,
 			User:             username,
 			Password:         password,
 			Token:            os.Getenv(optionDockerToken),

@@ -10,8 +10,10 @@ import (
 	"os"
 )
 
+const ImagePullSecretEnvVar = "K8S_IMAGE_PULL_SECRET"
+
 func GetSecretDockerCredentialsFromK8(username string, password string) (string, string, error) {
-	secretJsonBody := os.Getenv("K8S_IMAGE_PULL_SECRET")
+	secretJsonBody := os.Getenv(ImagePullSecretEnvVar)
 	if secretJsonBody != "" {
 		imageName := os.Args[1]
 
