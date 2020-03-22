@@ -3,9 +3,9 @@ package main
 // created by Rafael Seidel @ Portshift
 import (
 	"errors"
-	"github.com/Portshift-Admin/klar/clair"
-	"github.com/Portshift-Admin/klar/docker"
-	"github.com/Portshift-Admin/klar/forwarding"
+	"github.com/Portshift/klar/clair"
+	"github.com/Portshift/klar/docker"
+	"github.com/Portshift/klar/forwarding"
 	log "github.com/sirupsen/logrus"
 	"os"
 )

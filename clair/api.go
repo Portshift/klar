@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Portshift-Admin/klar/docker"
-	"github.com/Portshift-Admin/klar/utils"
+	"github.com/Portshift/klar/docker"
+	"github.com/Portshift/klar/utils"
 	"github.com/coreos/clair/api/v3/clairpb"
 	"google.golang.org/grpc"
 )

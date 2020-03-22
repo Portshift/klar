@@ -1,4 +1,4 @@
-module github.com/Portshift-Admin/klar
+module github.com/Portshift/klar
 
 go 1.13
 

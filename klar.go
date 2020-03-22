@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/Portshift-Admin/klar/docker"
-	secrets "github.com/Portshift-Admin/klar/kubernetes"
-	"github.com/Portshift-Admin/klar/utils"
+	"github.com/Portshift/klar/docker"
+	secrets "github.com/Portshift/klar/kubernetes"
+	"github.com/Portshift/klar/utils"
 	"os"
 	"strconv"
 	"strings"

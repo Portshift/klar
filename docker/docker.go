@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Portshift-Admin/klar/utils"
+	"github.com/Portshift/klar/utils"
 )
 
 const (

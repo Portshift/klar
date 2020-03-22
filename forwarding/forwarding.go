@@ -3,7 +3,7 @@ package forwarding
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/Portshift-Admin/klar/clair"
+	"github.com/Portshift/klar/clair"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
