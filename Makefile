@@ -9,12 +9,12 @@ build:
 	GOOS=$(TARGET_OS) CGO_ENABLED=0 go build -o $(BINARY) $(SOURCE)
 
 # builds the current dev docker version
-docker:
+build-docker:
 	docker build --build-arg BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		--build-arg VCS_REF=$(shell git rev-parse --short HEAD) \
 			-t $(IMAGE_NAME) .
 
-docker.push: docker
+docker.push: build-docker
 	docker push $(IMAGE_NAME)
 
 test:
