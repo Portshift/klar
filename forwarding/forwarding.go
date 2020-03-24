@@ -3,60 +3,43 @@ package forwarding
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/Portshift-Admin/klar/clair"
+	"fmt"
+	"github.com/Portshift/klar/clair"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 )
 
-var forwarded = false
-
 type ImageVulnerabilities struct {
 	Vulnerabilities []*clair.Vulnerability `json:"vulnerability"`
 	Image           string                 `json:"image"`
 	Success         bool                   `json:"success"`
+	ScanUUID        string                 `json:"scanuuid"`
 }
 
-func SendResultsIfNeeded(url string, imageName string) error {
-	if !forwarded {
-		log.Infof("Sending empty results")
-		err := ForwardVulnerabilities(url, imageName, []*clair.Vulnerability{}, false)
-		if err != nil {
-			return err
-		}
-		log.Infof("Sent empty results!")
+func SendScanResults(resultServicePath string, scanResults *ImageVulnerabilities) error {
+	if len(resultServicePath) == 0 {
+		log.Infof("No result service path provided")
+		return nil
 	}
 
-	return nil
-}
-
-func ForwardVulnerabilities(url string, imageName string, vulnerabilities []*clair.Vulnerability, success bool) error {
-	scanData := &ImageVulnerabilities{
-		Vulnerabilities: vulnerabilities,
-		Image:           imageName,
-		Success:         success,
-	}
-	jsonBody, err := json.Marshal(scanData)
+	jsonBody, err := json.Marshal(scanResults)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed marshal results: %v", err)
 	}
-	fullUrl := "http://" + url + ":8080/add/"
-	log.Infof("URL:> %s", fullUrl)
-	buffer := bytes.NewBuffer(jsonBody)
 
-	req, err := http.NewRequest("POST", fullUrl, buffer)
+	req, err := http.NewRequest("POST", resultServicePath, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		log.Errorf("failed to forward vulnerabilities: %v", err)
-		return err
+		return fmt.Errorf("failed to forward vulnerabilities: %v", err)
 	}
 	req.Close = true
 	req.Header.Set("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
-
 	if err != nil {
 		if resp != nil {
-			log.Errorf("response Status:", resp.Status)
+			log.Errorf("response Status: %s", resp.Status)
 		}
 		return err
 	}
@@ -66,6 +49,6 @@ func ForwardVulnerabilities(url string, imageName string, vulnerabilities []*cla
 	log.Debugf("response Headers: %s", resp.Header)
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	log.Debugf("response Body %s:", string(respBody))
-	forwarded = true
+
 	return nil
 }
