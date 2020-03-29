@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/containers/image v3.0.2+incompatible
-	github.com/coreos/clair v2.0.1-0.20180717235726-b1cd09231990+incompatible
+	github.com/coreos/clair v2.1.0+incompatible
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
 	github.com/sirupsen/logrus v1.4.2

@@ -43,18 +43,17 @@ func executeScan(conf *config) ([]*clair.Vulnerability, error) {
 	log.Infof("Analysing %d layers", len(image.FsLayers))
 
 	var vulnerabilities []*clair.Vulnerability
-	for _, ver := range []int{1, 3} {
-		c := clair.NewClair(conf.ClairAddr, ver, conf.ClairTimeout)
-		vulnerabilities, err = c.Analyse(image)
-		if err != nil {
-			log.Errorf("Failed to analyze using API v%d: %s", ver, err)
-		} else {
-			if !conf.JSONOutput {
-				log.Infof("Got results from Clair API v%d", ver)
-			}
-			break
+
+	c := clair.NewClair(conf.ClairAddr, conf.ClairTimeout)
+	vulnerabilities, err = c.Analyse(image)
+	if err != nil {
+		log.Errorf("Failed to analyze using API: %s", err)
+	} else {
+		if !conf.JSONOutput {
+			log.Infof("Got results from Clair API")
 		}
 	}
+
 	return vulnerabilities, err
 }
 
