@@ -6,6 +6,7 @@ import (
 	"github.com/Portshift/klar/clair"
 	"github.com/Portshift/klar/docker"
 	"github.com/Portshift/klar/forwarding"
+	vulutils "github.com/Portshift/klar/utils/vulnerability"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
@@ -83,7 +84,7 @@ func main() {
 		exit(2, conf, result)
 	}
 
-	result.Vulnerabilities = vulnerabilities
+	result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, vulnerabilities)
 	result.Success = true
 
 	log.Infof("Found %d vulnerabilities", len(vulnerabilities))
@@ -96,4 +97,20 @@ func main() {
 	if err := forwarding.SendScanResults(conf.ResultServicePath, result); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)
 	}
+}
+
+func filterVulnerabilities(severityThresholdStr string, vulnerabilities []*clair.Vulnerability) []*clair.Vulnerability {
+	var ret []*clair.Vulnerability
+
+	severityThreshold := vulutils.GetSeverityFromString(severityThresholdStr)
+	for _, vulnerability := range vulnerabilities {
+		if vulutils.GetSeverityFromString(vulnerability.Severity) < severityThreshold {
+			log.Debugf("Vulnerability severity below threshold. vulnerability=%+v, threshold=%+v", vulnerability,
+				severityThresholdStr)
+			continue
+		}
+		ret = append(ret, vulnerability)
+	}
+
+	return ret
 }
