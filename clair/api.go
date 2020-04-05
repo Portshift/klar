@@ -2,7 +2,6 @@ package clair
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,25 +11,11 @@ import (
 
 	"github.com/Portshift/klar/docker"
 	"github.com/Portshift/klar/utils"
-	"github.com/coreos/clair/api/v3/clairpb"
-	"google.golang.org/grpc"
 )
 
 type apiV1 struct {
 	url    string
 	client http.Client
-}
-
-type apiV3 struct {
-	url    string
-	client clairpb.AncestryServiceClient
-}
-
-func newAPI(url string, version int, timeout time.Duration) (API, error) {
-	if version < 3 {
-		return newAPIV1(url, timeout), nil
-	}
-	return newAPIV3(url)
 }
 
 func newAPIV1(url string, timeout time.Duration) *apiV1 {
@@ -46,23 +31,6 @@ func newAPIV1(url string, timeout time.Duration) *apiV1 {
 			Timeout: timeout,
 		},
 	}
-}
-
-func newAPIV3(url string) (*apiV3, error) {
-	if i := strings.Index(url, "://"); i != -1 {
-		runes := []rune(url)
-		url = string(runes[i+3:])
-	}
-	if strings.Index(url, ":") == -1 {
-		url = fmt.Sprintf("%s:6060", url)
-	}
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("did not connect to %s: %v", url, err)
-	}
-	return &apiV3{
-		url:    url,
-		client: clairpb.NewAncestryServiceClient(conn)}, nil
 }
 
 func (a *apiV1) Push(image *docker.Image) error {
@@ -143,65 +111,4 @@ func (a *apiV1) Analyze(image *docker.Image) ([]*Vulnerability, error) {
 		}
 	}
 	return vs, nil
-}
-
-func (a *apiV3) Push(image *docker.Image) error {
-	req := &clairpb.PostAncestryRequest{
-		Format:       "Docker",
-		AncestryName: image.Name,
-	}
-
-	ls := make([]*clairpb.PostAncestryRequest_PostLayer, len(image.FsLayers))
-	for i := 0; i < len(image.FsLayers); i++ {
-		ls[i] = newLayerV3(image, i)
-	}
-	req.Layers = ls
-	_, err := a.client.PostAncestry(context.Background(), req)
-	return err
-}
-
-func newLayerV3(image *docker.Image, index int) *clairpb.PostAncestryRequest_PostLayer {
-	return &clairpb.PostAncestryRequest_PostLayer{
-		Hash:    image.LayerName(index),
-		Path:    strings.Join([]string{image.Registry, image.Name, "blobs", image.FsLayers[index].BlobSum}, "/"),
-		Headers: map[string]string{"Authorization": image.Token},
-	}
-}
-
-func (a *apiV3) Analyze(image *docker.Image) ([]*Vulnerability, error) {
-	req := &clairpb.GetAncestryRequest{
-		AncestryName:        image.Name,
-		WithFeatures:        true,
-		WithVulnerabilities: true,
-	}
-
-	resp, err := a.client.GetAncestry(context.Background(), req)
-	if err != nil {
-		return nil, err
-	}
-	var vs []*Vulnerability
-	for _, f := range resp.Ancestry.Features {
-		for _, v := range f.Vulnerabilities {
-			cv := convertVulnerability(v)
-			cv.FeatureName = f.Name
-			cv.FeatureVersion = f.Version
-			//the for loop uses the same variable for "cv", reloading with new values
-			//since we are appending a pointer to the variable to the slice, we need to create a copy of the struct
-			//otherwise the slice winds up with multiple pointers to the same struct
-			vulnerability := cv
-			vs = append(vs, vulnerability)
-		}
-	}
-	return vs, nil
-}
-
-func convertVulnerability(cv *clairpb.Vulnerability) *Vulnerability {
-	return &Vulnerability{
-		Name:          cv.Name,
-		NamespaceName: cv.NamespaceName,
-		Description:   cv.Description,
-		Severity:      cv.Severity,
-		Link:          cv.Link,
-		FixedBy:       cv.FixedBy,
-	}
 }

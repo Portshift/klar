@@ -1,21 +1,15 @@
 package clair
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/Portshift/klar/docker"
-	"github.com/coreos/clair/api/v3/clairpb"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -90,79 +84,12 @@ func TestAnalyseV1(t *testing.T) {
 	ts := httptest.NewServer(clairServerhandler(t))
 	defer ts.Close()
 
-	c := NewClair(ts.URL, 1, time.Minute)
+	c := NewClair(ts.URL, time.Minute)
 	vs, err := c.Analyse(dockerImage)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(vs) != 1 {
 		t.Fatalf("Expected 1 vulnerability, got %d", len(vs))
-	}
-}
-
-const gAddr = "localhost:60801"
-
-type gServer struct{}
-
-func startGServer() {
-	lis, err := net.Listen("tcp", gAddr)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	clairpb.RegisterAncestryServiceServer(s, &gServer{})
-
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-}
-
-func TestMain(m *testing.M) {
-	go startGServer()
-	os.Exit(m.Run())
-}
-
-func (s *gServer) PostAncestry(ctx context.Context, in *clairpb.PostAncestryRequest) (*clairpb.PostAncestryResponse, error) {
-	return &clairpb.PostAncestryResponse{}, nil
-}
-
-func (s *gServer) GetAncestry(ctx context.Context, in *clairpb.GetAncestryRequest) (*clairpb.GetAncestryResponse, error) {
-	return &clairpb.GetAncestryResponse{
-		Ancestry: &clairpb.GetAncestryResponse_Ancestry{
-			Name: in.GetAncestryName(),
-			Features: []*clairpb.Feature{
-				{
-					Name:          "coreutils",
-					NamespaceName: "debian:8",
-					Version:       "8.23-4",
-					Vulnerabilities: []*clairpb.Vulnerability{
-						{
-
-							Name:          "CVE-2014-9471",
-							NamespaceName: "debian:8",
-							Description:   "The parse_datetime function in GNU coreutils ...",
-							Link:          "https://security-tracker.debian.org/tracker/CVE-2014-9471",
-							Severity:      "Low",
-							FixedBy:       "9.23-5",
-						},
-					},
-				},
-			},
-		},
-	}, nil
-}
-
-func TestAnalyseV3(t *testing.T) {
-	c := NewClair(gAddr, 3, time.Minute)
-	vs, err := c.Analyse(dockerImage)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(vs) != 1 {
-		t.Fatalf("Expected 1 vulnerability, got %d", len(vs))
-	}
-	if vs[0].Name != "CVE-2014-9471" {
-		t.Errorf("unexpected vulnerability name: %s", vs[0].Name)
 	}
 }
