@@ -2,7 +2,7 @@ package secrets
 
 import (
 	"errors"
-	"github.com/containers/image/docker/reference"
+	"github.com/containers/image/v5/docker/reference"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/credentialprovider"

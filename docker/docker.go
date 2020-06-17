@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/containers/image/v5/docker/reference"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -123,6 +125,8 @@ type Config struct {
 }
 
 const dockerHub = "registry-1.docker.io"
+// github.com/containers/image/v5/docker/reference/normalize.go
+const defaultDomain = "docker.io"
 
 var tokenRe = regexp.MustCompile(`Bearer realm="(.*?)",service="(.*?)",scope="(.*?)"`)
 
@@ -138,96 +142,72 @@ func NewImage(conf *Config) (*Image, error) {
 		Transport: tr,
 		Timeout:   conf.Timeout,
 	}
-	registry := dockerHub
-	tag := "latest"
-	token := ""
-	os := "linux"
-	arch := "amd64"
-	var nameParts, tagParts []string
-	var name, port string
-	state := stateInitial
-	start := 0
-	for i, c := range conf.ImageName {
-		if c == ':' || c == '/' || c == '@' || i == len(conf.ImageName)-1 {
-			if i == len(conf.ImageName)-1 {
-				// ignore a separator, include the last symbol
-				i += 1
-			}
-			part := conf.ImageName[start:i]
-			start = i + 1
-			switch state {
-			case stateInitial:
-				if part == "localhost" || strings.Contains(part, ".") {
-					// it's registry, let's check what's next =port of image name
-					registry = part
-					if c == ':' {
-						state = statePort
-					} else {
-						state = stateName
-					}
-				} else {
-					// it's an image name, if separator is /
-					// next part is also part of the name
-					// othrewise it's an offcial image
-					if c == '/' {
-						// we got just a part of name, till next time
-						start = 0
-						state = stateName
-					} else {
-						state = stateTag
-						name = fmt.Sprintf("library/%s", part)
-					}
-				}
-			case stateTag:
-				tag = ""
-				tagParts = append(tagParts, part)
-			case statePort:
-				state = stateName
-				port = part
-			case stateName:
-				if c == ':' || c == '@' {
-					state = stateTag
-				}
-				nameParts = append(nameParts, part)
-			}
-		}
-	}
 
-	if port != "" {
-		registry = fmt.Sprintf("%s:%s", registry, port)
-	}
-	if name == "" {
-		name = strings.Join(nameParts, "/")
-	}
-	if tag == "" {
-		tag = strings.Join(tagParts, ":")
-	}
-	if conf.InsecureRegistry {
-		registry = fmt.Sprintf("http://%s/v2", registry)
-	} else {
-		registry = fmt.Sprintf("https://%s/v2", registry)
-	}
-	if conf.Token != "" {
-		token = "Basic " + conf.Token
-	}
-	if conf.PlatformOS != "" {
-		os = conf.PlatformOS
-	}
-	if conf.PlatformArch != "" {
-		arch = conf.PlatformArch
-	}
-
-	return &Image{
-		Registry: registry,
-		Name:     name,
-		Tag:      tag,
+	image := &Image{
 		user:     conf.User,
 		password: conf.Password,
-		Token:    token,
+		Token:    "",
 		client:   client,
-		os:       os,
-		arch:     arch,
-	}, nil
+		os:       "linux",
+		arch:     "amd64",
+	}
+
+	ref, err := reference.ParseNormalizedNamed(conf.ImageName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse image name. name=%v: %v", conf.ImageName, conf.ImageName)
+	}
+
+	// strip tag if image has digest and tag
+	ref = imageNameWithDigestOrTag(ref)
+	// add default tag "latest"
+	ref = reference.TagNameOnly(ref)
+
+	image.Registry = reference.Domain(ref)
+	// reference.ParseNormalizedNamed setting `defaultDomain`, we need `dockerHub` domain
+	if image.Registry == defaultDomain {
+		image.Registry = dockerHub
+	}
+	image.Name = reference.Path(ref)
+	if canonical, isDigested := ref.(reference.Canonical); isDigested {
+		image.Tag = canonical.Digest().String()
+	} else if tagged, isTagged := ref.(reference.NamedTagged); isTagged {
+		image.Tag = tagged.Tag()
+	}
+
+	if conf.InsecureRegistry {
+		image.Registry = fmt.Sprintf("http://%s/v2", image.Registry)
+	} else {
+		image.Registry = fmt.Sprintf("https://%s/v2", image.Registry)
+	}
+	if conf.Token != "" {
+		image.Token = "Basic " + conf.Token
+	}
+	if conf.PlatformOS != "" {
+		image.os = conf.PlatformOS
+	}
+	if conf.PlatformArch != "" {
+		image.arch = conf.PlatformArch
+	}
+
+	return image, nil
+}
+
+// imageNameWithDigestOrTag strips the tag from ambiguous image references that have a digest as well (e.g. `image:tag@sha256:123...`).
+// Based on https://github.com/cri-o/cri-o/pull/3060
+func imageNameWithDigestOrTag(named reference.Named) reference.Named {
+	_, isTagged := named.(reference.NamedTagged)
+	canonical, isDigested := named.(reference.Canonical)
+	if isTagged && isDigested {
+		canonical, err := reference.WithDigest(reference.TrimNamed(named), canonical.Digest())
+		if err != nil {
+			log.Errorf("Failed to create canonical reference - returning the given name. name=%v, %v", named.Name(), err)
+			return named
+		}
+
+		return canonical
+	}
+
+	return named
 }
 
 // Pull retrieves information about layers from docker registry.

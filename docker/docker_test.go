@@ -64,6 +64,12 @@ func TestNewImage(t *testing.T) {
 			name:     "library/postgres",
 			tag:      "sha256:f6a2b81d981ace74aeafb2ed2982d52984d82958bfe836b82cbe4bf1ba440999",
 		},
+		"digest and tag": {
+			image:    "postgres:2.4.1@sha256:f6a2b81d981ace74aeafb2ed2982d52984d82958bfe836b82cbe4bf1ba440999",
+			registry: "https://registry-1.docker.io/v2",
+			name:     "library/postgres",
+			tag:      "sha256:f6a2b81d981ace74aeafb2ed2982d52984d82958bfe836b82cbe4bf1ba440999",
+		},
 		"localhost_no_tag": {
 			image:    "localhost/nginx",
 			registry: "https://localhost/v2",
