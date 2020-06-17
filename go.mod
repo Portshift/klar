@@ -4,10 +4,10 @@ go 1.13
 
 require (
 	github.com/containers/image v3.0.2+incompatible
-	github.com/coreos/clair v2.1.0+incompatible
+	github.com/containers/image/v5 v5.4.4
+	github.com/coreos/clair v2.1.0+incompatible // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
-	github.com/sirupsen/logrus v1.4.2
-	google.golang.org/grpc v1.24.0
+	github.com/sirupsen/logrus v1.6.0
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	k8s.io/kubernetes v1.17.3
