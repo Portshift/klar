@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"regexp"
 	"strings"
@@ -218,11 +219,16 @@ func (i *Image) Pull() error {
 		return err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode == http.StatusUnauthorized {
 		i.Token, err = i.requestToken(resp)
 		io.Copy(ioutil.Discard, resp.Body)
 		if err != nil {
-			return err
+			dump, dumpErr := httputil.DumpResponse(resp, false)
+			if dumpErr != nil {
+				return fmt.Errorf("failed to request token. dump error=%+v: %v", dumpErr, err)
+			}
+			return fmt.Errorf("failed to request token. response=%s: %v", string(dump), err)
 		}
 		// try again
 		resp, err = i.pullReq()
@@ -231,6 +237,7 @@ func (i *Image) Pull() error {
 		}
 		defer resp.Body.Close()
 	}
+
 	if contentType := resp.Header.Get("Content-Type"); contentType == "application/vnd.docker.distribution.manifest.list.v2+json" {
 		err = parseManifestResponse(resp, i)
 		if err != nil {
@@ -243,7 +250,12 @@ func (i *Image) Pull() error {
 		}
 		defer resp.Body.Close()
 	}
-	return parseImageResponse(resp, i)
+
+	if err := parseImageResponse(resp, i); err != nil {
+		return fmt.Errorf("failed to parse image response. request url=%s: %v", i.getPullReqUrl(), err)
+	}
+
+	return nil
 }
 
 func parseImageResponse(resp *http.Response, image *Image) error {
@@ -274,7 +286,12 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		}
 		image.schemaVersion = imageV1.SchemaVersion
 	default:
-		return fmt.Errorf("Docker Registry responded with unsupported Content-Type: %s", contentType)
+		dump, dumpErr := httputil.DumpResponse(resp, false)
+		if dumpErr != nil {
+			return fmt.Errorf("docker Registry responded with unsupported Content-Type (%v). dump error=%+v", contentType, dumpErr)
+		}
+
+		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s", string(dump))
 	}
 	return nil
 }
@@ -342,12 +359,16 @@ func (i *Image) requestToken(resp *http.Response) (string, error) {
 	return fmt.Sprintf("Bearer %s", tokenEnv.Token), nil
 }
 
+func (i *Image) getPullReqUrl() string {
+	return fmt.Sprintf("%s/%s/manifests/%s", i.Registry, i.Name, i.Reference)
+}
+
 func (i *Image) pullReq() (*http.Response, error) {
-	url := fmt.Sprintf("%s/%s/manifests/%s", i.Registry, i.Name, i.Reference)
+	url := i.getPullReqUrl()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Can't create a request")
-		return nil, err
+		fmt.Fprintln(os.Stderr, "failed to create a request")
+		return nil, fmt.Errorf("failed to create a request. url=%v: %v", url, err)
 	}
 	if i.Token == "" && i.user != "" {
 		req.SetBasicAuth(i.user, i.password)
@@ -361,8 +382,8 @@ func (i *Image) pullReq() (*http.Response, error) {
 	utils.DumpRequest(req)
 	resp, err := i.client.Do(req)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Get error")
-		return nil, err
+		fmt.Fprintln(os.Stderr, "failed execute the request")
+		return nil, fmt.Errorf("failed execute the request. url=%v: %v", url, err)
 	}
 	utils.DumpResponse(resp)
 	return resp, nil
