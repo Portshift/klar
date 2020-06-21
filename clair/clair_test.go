@@ -69,9 +69,9 @@ func clairServerhandler(t *testing.T) http.HandlerFunc {
 }
 
 var dockerImage = &docker.Image{
-	Registry: imageRegistry,
-	Name:     imageName,
-	Tag:      imageTag,
+	Registry:  imageRegistry,
+	Name:      imageName,
+	Reference: imageTag,
 	FsLayers: []docker.FsLayer{
 		{layerHash},
 		{emptyLayerHash},

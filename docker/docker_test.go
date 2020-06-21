@@ -95,8 +95,8 @@ func TestNewImage(t *testing.T) {
 		if image.Name != tc.name {
 			t.Fatalf("%s: Expected image name %s, got %s", name, tc.name, image.Name)
 		}
-		if image.Tag != tc.tag {
-			t.Fatalf("%s: Expected image tag %s, got %s", name, tc.tag, image.Tag)
+		if image.Reference != tc.tag {
+			t.Fatalf("%s: Expected image tag %s, got %s", name, tc.tag, image.Reference)
 		}
 	}
 
