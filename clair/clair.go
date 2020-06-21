@@ -108,16 +108,16 @@ func (c *Clair) Analyse(image *docker.Image) ([]*Vulnerability, error) {
 	layerLength := len(image.FsLayers)
 	if layerLength == 0 {
 		fmt.Fprintf(os.Stderr, "no need to analyse image %s/%s:%s as there is no non-emtpy layer\n",
-			image.Registry, image.Name, image.Tag)
+			image.Registry, image.Name, image.Reference)
 		return nil, nil
 	}
 
 	if err := c.api.Push(image); err != nil {
-		return nil, fmt.Errorf("push image %s/%s:%s to Clair failed: %s\n", image.Registry, image.Name, image.Tag, err.Error())
+		return nil, fmt.Errorf("push image %s/%s:%s to Clair failed: %s\n", image.Registry, image.Name, image.Reference, err.Error())
 	}
 	vs, err := c.api.Analyze(image)
 	if err != nil {
-		return nil, fmt.Errorf("analyse image %s/%s:%s failed: %s\n", image.Registry, image.Name, image.Tag, err.Error())
+		return nil, fmt.Errorf("analyse image %s/%s:%s failed: %s\n", image.Registry, image.Name, image.Reference, err.Error())
 	}
 
 	return vs, nil

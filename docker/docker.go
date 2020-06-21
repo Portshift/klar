@@ -28,7 +28,7 @@ const (
 type Image struct {
 	Registry      string
 	Name          string
-	Tag           string
+	Reference     string  // Tag or digest
 	FsLayers      []FsLayer
 	Token         string
 	user          string
@@ -154,7 +154,7 @@ func NewImage(conf *Config) (*Image, error) {
 
 	ref, err := reference.ParseNormalizedNamed(conf.ImageName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse image name. name=%v: %v", conf.ImageName, conf.ImageName)
+		return nil, fmt.Errorf("failed to parse image name. name=%v: %v", conf.ImageName, err)
 	}
 
 	// strip tag if image has digest and tag
@@ -169,9 +169,9 @@ func NewImage(conf *Config) (*Image, error) {
 	}
 	image.Name = reference.Path(ref)
 	if canonical, isDigested := ref.(reference.Canonical); isDigested {
-		image.Tag = canonical.Digest().String()
+		image.Reference = canonical.Digest().String()
 	} else if tagged, isTagged := ref.(reference.NamedTagged); isTagged {
-		image.Tag = tagged.Tag()
+		image.Reference = tagged.Tag()
 	}
 
 	if conf.InsecureRegistry {
@@ -287,7 +287,7 @@ func parseManifestResponse(resp *http.Response, image *Image) error {
 	}
 	for _, m := range manifestlist.Manifests {
 		if m.Platform.OS == image.os && m.Platform.Architecture == image.arch {
-			image.Tag = m.Digest
+			image.Reference = m.Digest
 			return nil
 		}
 	}
@@ -343,7 +343,7 @@ func (i *Image) requestToken(resp *http.Response) (string, error) {
 }
 
 func (i *Image) pullReq() (*http.Response, error) {
-	url := fmt.Sprintf("%s/%s/manifests/%s", i.Registry, i.Name, i.Tag)
+	url := fmt.Sprintf("%s/%s/manifests/%s", i.Registry, i.Name, i.Reference)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Can't create a request")
