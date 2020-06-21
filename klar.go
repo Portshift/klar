@@ -97,9 +97,7 @@ func newConfig(imageName string) (*config, error) {
 		return nil, fmt.Errorf("clair address must be provided")
 	}
 
-	if os.Getenv(optionKlarTrace) != "" {
-		utils.Trace = true
-	}
+	utils.Trace = os.Getenv(optionKlarTrace) == "true"
 
 	clairOutput, err := parseOutputPriority()
 	if err != nil {

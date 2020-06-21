@@ -1,6 +1,5 @@
 package main
 
-// created by Rafael Seidel @ Portshift
 import (
 	"fmt"
 	"github.com/Portshift/klar/clair"
@@ -80,7 +79,9 @@ func main() {
 
 	vulnerabilities, err := executeScan(conf)
 	if err != nil {
-		log.Errorf("Failed to execute scan: %v", err)
+		errStr := fmt.Sprintf("Failed to execute scan: %v", err)
+		log.Errorf(errStr)
+		result.ScanErrMsg = errStr
 		exit(2, conf, result)
 	}
 
