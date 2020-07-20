@@ -1,9 +1,11 @@
 package docker
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/Portshift/klar/docker/token"
 	"github.com/containers/image/v5/docker/reference"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -173,6 +175,13 @@ func NewImage(conf *Config) (*Image, error) {
 		image.Reference = canonical.Digest().String()
 	} else if tagged, isTagged := ref.(reference.NamedTagged); isTagged {
 		image.Reference = tagged.Tag()
+	}
+
+	if image.user == "" || image.password == "" {
+		credExtractor := token.CreateCredExtractor()
+		if image.user, image.password, err = credExtractor.GetCredentials(context.Background(), ref); err != nil {
+			return nil, fmt.Errorf("failed to get credentials. image name=%v: %v", conf.ImageName, err)
+		}
 	}
 
 	if conf.InsecureRegistry {
