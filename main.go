@@ -58,9 +58,11 @@ func executeScan(conf *config) ([]*clair.Vulnerability, error) {
 }
 
 func main() {
+	initLogs()
+
 	result := &forwarding.ImageVulnerabilities{
-		Success:         false,
-		ScanUUID:        os.Getenv("SCAN_UUID"),
+		Success:  false,
+		ScanUUID: os.Getenv("SCAN_UUID"),
 	}
 
 	imageName, err := getImageName()
@@ -97,6 +99,12 @@ func main() {
 
 	if err := forwarding.SendScanResults(conf.ResultServicePath, result); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)
+	}
+}
+
+func initLogs() {
+	if os.Getenv(optionKlarTrace) == "true" {
+		log.SetLevel(log.DebugLevel)
 	}
 }
 

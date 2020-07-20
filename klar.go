@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/Portshift/klar/docker"
-	secrets "github.com/Portshift/klar/kubernetes"
 	"github.com/Portshift/klar/utils"
 	"os"
 	"strconv"
@@ -114,11 +113,6 @@ func newConfig(imageName string) (*config, error) {
 		dockerTimeout = 1
 	}
 
-	username, password, err := secrets.GetSecretDockerCredentialsFromK8(os.Getenv(optionDockerUser), os.Getenv(optionDockerPassword))
-	if err != nil {
-		return nil, err
-	}
-
 	return &config{
 		ResultServicePath: os.Getenv(optionResultServicePath),
 		ClairAddr:         clairAddr,
@@ -131,8 +125,8 @@ func newConfig(imageName string) (*config, error) {
 		WhiteListFile:     os.Getenv(optionWhiteListFile),
 		DockerConfig: docker.Config{
 			ImageName:        imageName,
-			User:             username,
-			Password:         password,
+			User:             os.Getenv(optionDockerUser),
+			Password:         os.Getenv(optionDockerPassword),
 			Token:            os.Getenv(optionDockerToken),
 			InsecureTLS:      parseBoolOption(optionDockerInsecure),
 			InsecureRegistry: parseBoolOption(optionRegistryInsecure),
