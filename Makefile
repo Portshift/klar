@@ -12,6 +12,7 @@ build:
 build-docker:
 	docker build --build-arg BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		--build-arg VCS_REF=$(shell git rev-parse --short HEAD) \
+		--build-arg IMAGE_VERSION=${VERSION} \
 			-t $(IMAGE_NAME) .
 
 docker.push: build-docker
