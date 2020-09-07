@@ -27,8 +27,9 @@ jobs:
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
     steps:
       - checkout
-      - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io 
-      - run: VERSION=${CIRCLE_TAG} make docker.push
+      - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io
+      - run: echo ${CIRCLE_TAG}
+      - run: make docker.push
 
 workflows:
   test_build_and_push:
