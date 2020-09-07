@@ -22,11 +22,6 @@ jobs:
       - run: make test
 
   build_and_push:
-    filters:
-      branches:
-        only: master
-      tags:
-        only: /^[0-9]+(\.[0-9]+)*$/
     docker:
       - image: gcr.io/development-infra-208909/docker-18-git-go-1.13.5-builder
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
@@ -47,4 +42,9 @@ workflows:
           requires:
             - test
           context: REG_CREDS
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^[0-9]+(\.[0-9]+)*$/
 
