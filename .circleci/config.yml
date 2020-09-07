@@ -37,7 +37,10 @@ jobs:
 workflows:
   test_build_and_push:
     jobs:
-      - test
+      - test:
+          filters:  # required since `build_and_push` has tag filters AND requires `test`
+            tags:
+              only: /.*/      
       - build_and_push:
           requires:
             - test
