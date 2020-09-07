@@ -31,6 +31,8 @@ jobs:
       - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io
       - run: echo ${CIRCLE_TAG}
       - run: make docker.push
+      - run: docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
+      - run: DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push 
 
 workflows:
   test_build_and_push:
@@ -39,5 +41,5 @@ workflows:
       - build_and_push:
           requires:
             - test
-          context: GCR_CRED
+          context: REG_CREDS
 
