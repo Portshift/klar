@@ -29,23 +29,28 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io
-      - run: export TAG=$(git describe --tags --exact-match)
-      - run: VERSION=${TAG} make docker.push
-      - run: docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
-      - run: VERSION=${TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push 
+      - run: export TAG=$(git describe --tags --exact-match 2>/dev/null)
+      - run: 
+          name: Major push tasks
+          command: |
+            if [ "${TAG}" != "" ];
+            then
+              VERSION=${TAG} make docker.push
+              docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
+              VERSION=${TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push
+            else
+              make docker
+            fi
+#       - run: VERSION=${TAG} make docker.push
+#       - run: docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
+#       - run: VERSION=${TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push 
 
 workflows:
   test_build_and_push:
     jobs:
-      - test:
-          filters:  # required since `build_and_push` has tag filters AND requires `test`
-            tags:
-              only: /.*/      
+      - test:   
       - build_and_push:
           requires:
             - test
           context: REG_CREDS
-          filters:
-            tags:
-              only: /^[0-9]+\.[0-9]+\.[0-9]+$/
 
