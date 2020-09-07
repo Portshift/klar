@@ -33,3 +33,11 @@ jobs:
       - checkout
       - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io 
       - run: VERSION=${CIRCLE_TAG} make docker.push
+
+workflows:
+  test_build_and_push:
+    jobs:
+      - test
+      - build_and_push:
+          requires:
+            - test
