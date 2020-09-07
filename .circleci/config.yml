@@ -43,8 +43,6 @@ workflows:
             - test
           context: REG_CREDS
           filters:
-            branches:
-              only: circleci-project-setup
             tags:
               only: /^[0-9]+(\.[0-9]+)*$/
 
