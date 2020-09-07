@@ -30,15 +30,15 @@ jobs:
       - setup_remote_docker
       - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io
       - run: export TAG=$(git describe --tags --exact-match 2>/dev/null)
-      - run: |
-            if [ "${TAG}" != "" ];
-            then
-              VERSION=${TAG} make docker.push
-              docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
-              VERSION=${TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push
-            else
-              make docker
-            fi
+      - run: >
+          if [ "${TAG}" != "" ];
+          then
+            VERSION=${TAG} make docker.push
+            docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
+            VERSION=${TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push
+          else
+            make docker
+          fi
 #       - run: VERSION=${TAG} make docker.push
 #       - run: docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
 #       - run: VERSION=${TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push 
