@@ -24,7 +24,6 @@ jobs:
   build_and_push:
     docker:
       - image: gcr.io/development-infra-208909/docker-18-git-go-1.13.5-builder
-    context: GCR_CRED
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
     steps:
       - checkout
@@ -38,3 +37,5 @@ workflows:
       - build_and_push:
           requires:
             - test
+          context: GCR_CRED
+
