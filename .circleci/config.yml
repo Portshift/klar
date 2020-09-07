@@ -1,0 +1,56 @@
+version: 2.1
+jobs:
+  test:
+    docker:
+      # specify the version
+      - image: circleci/golang:1.14
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+
+    #### TEMPLATE_NOTE: go expects specific checkout path representing url
+    #### expecting it in the form of
+    ####   /go/src/github.com/circleci/go-tool
+    ####   /go/src/bitbucket.org/circleci/go-tool
+    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
+    steps:
+      - checkout
+
+      # specify any bash command here prefixed with `run: `
+      - run: make test
+
+  build_and_push:
+    docker:
+      - image: gcr.io/development-infra-208909/docker-18-git-go-1.13.5-builder
+    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io
+      - run: echo ${CIRCLE_TAG}
+      - run: >
+          if [ "${CIRCLE_TAG}" != "" ];
+          then
+            VERSION=${CIRCLE_TAG} make docker.push
+            docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
+            VERSION=${CIRCLE_TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push
+          else
+            make build
+          fi
+
+workflows:
+  test_build_and_push:
+    jobs:
+      - test:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+)*$/
+      - build_and_push:
+          requires:
+            - test
+          context: REG_CREDS
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+)*$/
