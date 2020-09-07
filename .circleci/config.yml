@@ -22,6 +22,11 @@ jobs:
       - run: make test
 
   build_and_push:
+    filters:
+      branches:
+        only: master
+      tags:
+        only: /^[0-9]+(\.[0-9]+)*$/
     docker:
       - image: gcr.io/development-infra-208909/docker-18-git-go-1.13.5-builder
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
@@ -30,9 +35,9 @@ jobs:
       - setup_remote_docker
       - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io
       - run: echo ${CIRCLE_TAG}
-      - run: make docker.push
+      - run: VERSION=${CIRCLE_TAG} make docker.push
       - run: docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
-      - run: DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push 
+      - run: VERSION=${CIRCLE_TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push 
 
 workflows:
   test_build_and_push:
