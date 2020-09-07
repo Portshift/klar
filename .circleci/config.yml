@@ -30,9 +30,7 @@ jobs:
       - setup_remote_docker
       - run: docker login -u _json_key -p "${GCR_REGISTRY_SERVICE_ACCOUNT}" http://gcr.io
       - run: export TAG=$(git describe --tags --exact-match 2>/dev/null)
-      - run: 
-          name: Major push tasks
-          command: |
+      - run: |
             if [ "${TAG}" != "" ];
             then
               VERSION=${TAG} make docker.push
