@@ -37,7 +37,7 @@ jobs:
             docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
             VERSION=${TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push
           else
-            make docker
+            make build
           fi
 #       - run: VERSION=${TAG} make docker.push
 #       - run: docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
