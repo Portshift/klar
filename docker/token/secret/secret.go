@@ -2,7 +2,7 @@ package secret
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"os"
 
 	"github.com/containers/image/v5/docker/reference"
@@ -35,17 +35,16 @@ func (s *ImagePullSecret) GetCredentials(_ context.Context, named reference.Name
 		Type:       corev1.SecretTypeDockerConfigJson,
 	}}
 
-	var generalKeyRing = credentialprovider.NewDockerKeyring()
-
-	generalKeyRing, err = credprovsecrets.MakeDockerKeyring(secrets, generalKeyRing)
+	dockerKeyring, err := credprovsecrets.MakeDockerKeyring(secrets, credentialprovider.NewDockerKeyring())
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to create docker keyring: %v", err)
 	}
 
-	credentials, _ := generalKeyRing.Lookup(named.Name())
-	if len(credentials) != 1 {
-		return "", "", errors.New("failed to get secret docker credentials")
+	credentials, credentialsExist := dockerKeyring.Lookup(named.Name())
+	if !credentialsExist {
+		return "", "", fmt.Errorf("failed to get image credentials. image=%v", named.Name())
 	}
 
+	// using the first credentials found as they are the most specific match for this image
 	return credentials[0].Username, credentials[0].Password, nil
 }
