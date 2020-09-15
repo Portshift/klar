@@ -40,7 +40,7 @@ jobs:
             export KLAR_REDHAT_IMAGE_NAME_AND_TAG="${REDHAT_REGISTRY}:${CIRCLE_TAG}"
             docker images --digests
             export DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${KLAR_REDHAT_IMAGE_NAME_AND_TAG} | grep -o sha256:.*)
-            'until wget  --header "accept: */*" --header "Authorization: Bearer ${REDHAT_API_KEY}" --header "Content-Type: application/json" --post-data "{}" https://connect.redhat.com/api/v2/projects/${KLAR_REDHAT_PROJECT_ID}/containers/${DIGEST}/tags/${GIT_VERSION}/publish; do echo "failed"; sleep 1; done'
+            until wget  --header "accept: */*" --header "Authorization: Bearer ${REDHAT_API_KEY}" --header "Content-Type: application/json" --post-data "{}" https://connect.redhat.com/api/v2/projects/${KLAR_REDHAT_PROJECT_ID}/containers/${DIGEST}/tags/${GIT_VERSION}/publish; do echo "failed"; sleep 1; done
           else
             make build
           fi
