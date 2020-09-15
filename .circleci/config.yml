@@ -35,7 +35,11 @@ jobs:
           then
             VERSION=${CIRCLE_TAG} make docker.push
             docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
-            VERSION=${CIRCLE_TAG} DOCKER_REGISTRY=scan.connect.redhat.com/ospid-2fcc790b-c72a-47d5-a615-1ec408f45d66 make docker.push
+            export REDHAT_REGISTRY=scan.connect.redhat.com/${KLAR_REDHAT_PROJECT_ID}
+            VERSION=${CIRCLE_TAG} DOCKER_REGISTRY=${REDHAT_REGISTRY} make docker.push
+            export KLAR_REDHAT_IMAGE_NAME_AND_TAG="${REDHAT_REGISTRY}/klar:${CIRCLE_TAG}"
+            export DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${KLAR_REDHAT_IMAGE_NAME_AND_TAG} | grep -o sha256:.*)
+            until wget  --header "accept: */*" --header "Authorization: Bearer ${REDHAT_API_KEY}" --header "Content-Type: application/json" --post-data "{}" https://connect.redhat.com/api/v2/projects/${KLAR_REDHAT_PROJECT_ID}/containers/${DIGEST}/tags/${CIRCLE_TAG}/publish; do echo "failed"; sleep 1; done
           else
             make build
           fi
