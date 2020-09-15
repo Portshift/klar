@@ -43,7 +43,7 @@ jobs:
           else
             make build
           fi
-      - run: until wget  --header "accept: */*" --header "Authorization: Bearer ${REDHAT_API_KEY}" --header "Content-Type: application/json" --post-data "{}" https://connect.redhat.com/api/v2/projects/${KLAR_REDHAT_PROJECT_ID}/containers/${DIGEST}/tags/${CIRCLE_TAG}/publish; do echo "failed"; sleep 1; done
+      - run: 'until wget  --header "accept: */*" --header "Authorization: Bearer ${REDHAT_API_KEY}" --header "Content-Type: application/json" --post-data "{}" https://connect.redhat.com/api/v2/projects/${KLAR_REDHAT_PROJECT_ID}/containers/${DIGEST}/tags/${CIRCLE_TAG}/publish; do echo "failed"; sleep 1; done'
 
 workflows:
   test_build_and_push:
