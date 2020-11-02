@@ -34,6 +34,7 @@ jobs:
       - run: >
           if [ "${CIRCLE_TAG}" != "" ];
           then
+            VERSION=${CIRCLE_TAG} make docker.push 
             VERSION=${CIRCLE_SHA1} make docker.push
             docker login -u unused scan.connect.redhat.com -p ${KLAR_REDHAT_REGISTRY_KEY}
             export REDHAT_REGISTRY=scan.connect.redhat.com/${KLAR_REDHAT_PROJECT_ID}
