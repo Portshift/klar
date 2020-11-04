@@ -33,7 +33,7 @@ func vulnerabilitiesBySeverity(sev string, store map[string][]*clair.Vulnerabili
 	return items
 }
 
-func printVulnerabilities(conf *config, vs []*clair.Vulnerability) int {
+func printVulnerabilities(conf *Config, vs []*clair.Vulnerability) int {
 	groupBySeverity(vs)
 	vsNumber := 0
 	iteratePriorities(priorities[0], func(sev string) { fmt.Printf("%s: %d\n", sev, len(store[sev])) })

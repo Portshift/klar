@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func exit(code int, conf *config, scanResults *forwarding.ImageVulnerabilities) {
+func exit(code int, conf *Config, scanResults *forwarding.ImageVulnerabilities) {
 	if err := forwarding.SendScanResults(conf.ResultServicePath, scanResults); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)
 	}
@@ -25,7 +25,7 @@ func getImageName() (string, error) {
 	return os.Args[1], nil
 }
 
-func ExecuteScan(conf *config) ([]*clair.Vulnerability, error) {
+func ExecuteScan(conf *Config) ([]*clair.Vulnerability, error) {
 	image, err := docker.NewImage(&conf.DockerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse name: %v", err)

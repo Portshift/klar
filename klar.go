@@ -77,7 +77,7 @@ func parseBoolOption(key string) bool {
 	return val
 }
 
-type config struct {
+type Config struct {
 	ClairAddr         string
 	ClairOutput       string
 	Threshold         int
@@ -90,7 +90,7 @@ type config struct {
 	ResultServicePath string
 }
 
-func newConfig(imageName string) (*config, error) {
+func newConfig(imageName string) (*Config, error) {
 	clairAddr := os.Getenv(optionClairAddress)
 	if clairAddr == "" {
 		return nil, fmt.Errorf("clair address must be provided")
@@ -113,7 +113,7 @@ func newConfig(imageName string) (*config, error) {
 		dockerTimeout = 1
 	}
 
-	return &config{
+	return &Config{
 		ResultServicePath: os.Getenv(optionResultServicePath),
 		ClairAddr:         clairAddr,
 		ClairOutput:       clairOutput,
