@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/Portshift/klar/clair"
+	"github.com/Portshift/klar/client"
 )
 
 var store = make(map[string][]*clair.Vulnerability)
@@ -33,10 +34,10 @@ func vulnerabilitiesBySeverity(sev string, store map[string][]*clair.Vulnerabili
 	return items
 }
 
-func printVulnerabilities(conf *Config, vs []*clair.Vulnerability) int {
+func printVulnerabilities(conf *client.Config, vs []*clair.Vulnerability) int {
 	groupBySeverity(vs)
 	vsNumber := 0
-	iteratePriorities(priorities[0], func(sev string) { fmt.Printf("%s: %d\n", sev, len(store[sev])) })
+	iteratePriorities(client.Priorities[0], func(sev string) { fmt.Printf("%s: %d\n", sev, len(store[sev])) })
 	fmt.Printf("\n")
 
 	iteratePriorities(conf.ClairOutput, func(sev string) {
@@ -58,7 +59,7 @@ func printVulnerabilities(conf *Config, vs []*clair.Vulnerability) int {
 
 func iteratePriorities(output string, f func(sev string)) {
 	filtered := true
-	for _, sev := range priorities {
+	for _, sev := range client.Priorities {
 		if filtered {
 			if sev != output {
 				continue

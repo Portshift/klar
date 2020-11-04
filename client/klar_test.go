@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"os"
@@ -72,12 +72,12 @@ func TestParseOutputPriority(t *testing.T) {
 		shouldFail bool
 	}{
 		{
-			priority: priorities[1],
-			expected: priorities[1],
+			priority: Priorities[1],
+			expected: Priorities[1],
 		},
 		{
 			priority: "",
-			expected: priorities[0],
+			expected: Priorities[0],
 		},
 		{
 			priority:   "xxx",
