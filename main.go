@@ -25,7 +25,7 @@ func getImageName() (string, error) {
 	return os.Args[1], nil
 }
 
-func executeScan(conf *config) ([]*clair.Vulnerability, error) {
+func ExecuteScan(conf *config) ([]*clair.Vulnerability, error) {
 	image, err := docker.NewImage(&conf.DockerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse name: %v", err)
@@ -79,7 +79,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	vulnerabilities, err := executeScan(conf)
+	vulnerabilities, err := ExecuteScan(conf)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to execute scan: %v", err)
 		log.Errorf(errStr)
