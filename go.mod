@@ -4,13 +4,15 @@ go 1.13
 
 require (
 	github.com/GoogleCloudPlatform/docker-credential-gcr v1.5.0
-	github.com/aws/aws-sdk-go v1.19.11
+	github.com/aquasecurity/fanal v0.0.0-20201028122920-48a25d865182
+	github.com/aws/aws-sdk-go v1.27.1
 	github.com/containers/image/v5 v5.4.4
-	github.com/coreos/clair v2.1.0+incompatible // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
+	github.com/google/go-containerregistry v0.0.0-20200331213917-3d03ed9b1ca2
+	github.com/hashicorp/go-multierror v1.1.0
+	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/sirupsen/logrus v1.6.0
-	k8s.io/api v0.17.3
-	k8s.io/apimachinery v0.17.3 // indirect
+	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+	k8s.io/api v0.17.4
 	k8s.io/kubernetes v1.17.3
 )
 

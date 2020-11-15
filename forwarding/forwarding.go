@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Portshift/klar/clair"
+	"github.com/Portshift/klar/docker"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 )
 
-type ImageVulnerabilities struct {
+	type ImageVulnerabilities struct {
 	Vulnerabilities []*clair.Vulnerability `json:"vulnerability"`
+	LayerCommands   []*docker.FsLayerCommand `json:"layerCommands"`
 	Image           string                 `json:"image"`
 	Success         bool                   `json:"success"`
 	ScanUUID        string                 `json:"scanuuid"`

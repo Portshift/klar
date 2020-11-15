@@ -6,8 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Portshift/klar/docker/token"
+	fanal_token "github.com/aquasecurity/fanal/image/token"
 	"github.com/containers/image/v5/docker/reference"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +22,12 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	docker_manifest "github.com/containers/image/v5/manifest"
+
+	containerregistry_v1 "github.com/google/go-containerregistry/pkg/v1"
+
+	fanal_types "github.com/aquasecurity/fanal/types"
+
 
 	"github.com/Portshift/klar/utils"
 )
@@ -33,19 +45,21 @@ type Image struct {
 	Name          string
 	Reference     string  // Tag or digest
 	FsLayers      []FsLayer
+	FsCommands    []*FsLayerCommand
 	Token         string
 	user          string
 	password      string
 	client        http.Client
-	digest        string
+	Digest        string
 	schemaVersion int
 	os            string
 	arch          string
+	imageName     string
 }
 
 func (i *Image) LayerName(index int) string {
-	s := fmt.Sprintf("%s%s", trimDigest(i.digest),
-		trimDigest(i.FsLayers[index].BlobSum))
+	s := fmt.Sprintf("%s%s", TrimDigest(i.Digest),
+		TrimDigest(i.FsLayers[index].BlobSum))
 	return s
 }
 
@@ -57,7 +71,7 @@ func (i *Image) AnalyzedLayerName() string {
 	return i.LayerName(index)
 }
 
-func trimDigest(d string) string {
+func TrimDigest(d string) string {
 	return strings.Replace(d, "sha256:", "", 1)
 }
 
@@ -65,6 +79,13 @@ func trimDigest(d string) string {
 type FsLayer struct {
 	BlobSum string
 }
+
+// FsLayerCommand represents a history command of a layer in a docker image
+type FsLayerCommand struct {
+	Command  string
+	Layer    string
+}
+
 
 // ImageV1 represents a Manifest V 2, Schema 1 Docker Image
 type imageV1 struct {
@@ -153,6 +174,7 @@ func NewImage(conf *Config) (*Image, error) {
 		client:   client,
 		os:       "linux",
 		arch:     "amd64",
+		imageName: conf.ImageName,
 	}
 
 	ref, err := reference.ParseNormalizedNamed(conf.ImageName)
@@ -264,7 +286,137 @@ func (i *Image) Pull() error {
 		return fmt.Errorf("failed to parse image response. request url=%s: %v", i.getPullReqUrl(), err)
 	}
 
+	i.FetchFsCommands()
+	if err := i.FetchFsCommands(); err != nil {
+		return fmt.Errorf("failed to fetch layer commands: %v", err)
+	}
+
 	return nil
+}
+
+func (i *Image) GetFsCommands() []*FsLayerCommand {
+	return i.FsCommands
+}
+
+// Commands retrieves information about image layers commands from docker registry.
+func (i *Image) FetchFsCommands() error {
+	if i.FsCommands != nil {
+		log.Infof("Layer commands are already present")
+		return nil
+	}
+	ctx := context.Background()
+
+	opts := fanal_types.DockerOption{
+		Timeout:  90*time.Second,
+		SkipPing: true,
+		UserName: i.user,
+		Password: i.password,
+	}
+	img, cleanup, err := newDockerImage(ctx, i.imageName, opts)
+	if err != nil {
+		return fmt.Errorf("failed to get docker image: %v", err)
+	}
+	defer cleanup()
+
+	conf, err := img.ConfigFile()
+	if err != nil {
+		return fmt.Errorf("failed to get config file: %v", err)
+	}
+	confB, err := json.Marshal(conf)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %v", err)
+	}
+	log.Errorf("confB: %s", confB)
+
+	var commands []string
+	for i, layerHistory := range conf.History {
+		if layerHistory.EmptyLayer {
+			log.Errorf("Skipping empty layer (%v): %s", i, layerHistory)
+			continue
+		}
+		commands = append(commands, layerHistory.CreatedBy)
+
+	}
+	layers, err := img.Layers()
+	if err != nil {
+		return fmt.Errorf("failed to get layers: %v", err)
+	}
+	if len(layers) != len(commands) {
+		return fmt.Errorf("number of fs layers (%v) doesn't match the number of fs history entries (%v)", len(layers), len(commands))
+	}
+
+	var layerCommands []*FsLayerCommand
+	for i, layer := range layers {
+		layerDigest, err := layer.Digest()
+		if err != nil {
+			return fmt.Errorf("failed to get layer digest: %v", err)
+		}
+		layerCommands = append(layerCommands, &FsLayerCommand{
+			Command: commands[i],
+			Layer:   layerDigest.Hex,
+		})
+	}
+
+	layerCommandsB, err := json.Marshal(layerCommands)
+	if err != nil {
+		return fmt.Errorf("failed to marshal layer commands: %v", err)
+	}
+	log.Errorf("layerCommandsB: %s", layerCommandsB)
+
+	i.FsCommands = layerCommands
+
+	return nil
+}
+
+func newDockerImage(ctx context.Context, imageName string, option fanal_types.DockerOption) (containerregistry_v1.Image, func(), error) {
+	var result error
+
+	var nameOpts []name.Option
+	if option.NonSSL {
+		nameOpts = append(nameOpts, name.Insecure)
+	}
+	ref, err := name.ParseReference(imageName, nameOpts...)
+	if err != nil {
+		return nil, func() {}, xerrors.Errorf("failed to parse the image name: %w", err)
+	}
+
+	//// Try accessing Docker Daemon
+	//img, cleanup, err := daemon.Image(ref)
+	//if err == nil {
+	//	// Return v1.Image if the image is found in Docker Engine
+	//	return img, cleanup, nil
+	//}
+	//result = multierror.Append(result, err)
+
+	// Try accessing Docker Registry
+	var remoteOpts []remote.Option
+	if option.InsecureSkipTLSVerify {
+		t := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		remoteOpts = append(remoteOpts, remote.WithTransport(t))
+	}
+
+	domain := ref.Context().RegistryStr()
+	auth := fanal_token.GetToken(ctx, domain, option)
+
+	if auth.Username != "" && auth.Password != "" {
+		remoteOpts = append(remoteOpts, remote.WithAuth(&auth))
+	} else if option.RegistryToken != "" {
+		bearer := authn.Bearer{Token: option.RegistryToken}
+		remoteOpts = append(remoteOpts, remote.WithAuth(&bearer))
+	} else {
+		remoteOpts = append(remoteOpts, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	}
+
+	img, err := remote.Image(ref, remoteOpts...)
+	if err == nil {
+		// Return v1.Image if the image is found in Docker Registry
+		return img, func() {}, nil
+	}
+	result = multierror.Append(result, err)
+
+	return nil, func() {}, result
 }
 
 func parseImageResponse(resp *http.Response, image *Image) error {
@@ -279,13 +431,22 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		for i := range imageV2.Layers {
 			image.FsLayers[i].BlobSum = imageV2.Layers[i].Digest
 		}
-		image.digest = imageV2.Config.Digest
+		image.Digest = imageV2.Config.Digest
 		image.schemaVersion = imageV2.SchemaVersion
 	case "application/vnd.docker.distribution.manifest.v1+prettyjws":
+		//var imageV1 imageV1
+		body, err := ioutil.ReadAll(resp.Body)
+		schema1, err := docker_manifest.Schema1FromManifest(body)
+		if err != nil {
+			return fmt.Errorf("failed to convert schema1 from manifest: %v", err)
+		}
+		for i, compatibility := range schema1.ExtractedV1Compatibility {
+			log.Errorf("layer %v: cmd: %v", i, compatibility.ContainerConfig.Cmd)
+		}
 		var imageV1 imageV1
-		if err := json.NewDecoder(resp.Body).Decode(&imageV1); err != nil {
-			fmt.Fprintln(os.Stderr, "ImageV1 decode error")
-			return err
+		err = json.Unmarshal(body, &imageV1)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal imageV1: %v", err)
 		}
 		image.FsLayers = make([]FsLayer, len(imageV1.FsLayers))
 		// in schemaVersion 1 layers are in reverse order, so we save them in the same order as v2
@@ -388,12 +549,19 @@ func (i *Image) pullReq() (*http.Response, error) {
 
 	// Prefer manifest schema v2
 	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.v1+prettyjws, application/vnd.docker.distribution.manifest.list.v2+json")
+	//req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v1+prettyjws")
+	//req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+	//req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.list.v2+json")
+	fmt.Printf("REQUEST START!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
 	utils.DumpRequest(req)
+	fmt.Printf("REQUEST END!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
 	resp, err := i.client.Do(req)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed execute the request")
 		return nil, fmt.Errorf("failed execute the request. url=%v: %v", url, err)
 	}
+	fmt.Printf("RESPONSE START!!!!!!!!!!!!!!!!!!!!!\n")
 	utils.DumpResponse(resp)
+	fmt.Printf("RESPONSE END!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
 	return resp, nil
 }
