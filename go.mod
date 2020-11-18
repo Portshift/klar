@@ -7,7 +7,6 @@ require (
 	github.com/aws/aws-sdk-go v1.19.11
 	github.com/containers/image/v5 v5.4.4
 	github.com/coreos/clair v2.1.0+incompatible // indirect
-	github.com/docker/distribution v2.7.1+incompatible
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	k8s.io/api v0.17.3

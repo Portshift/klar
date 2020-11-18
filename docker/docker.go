@@ -161,7 +161,7 @@ func NewImage(conf *Config) (*Image, error) {
 	}
 
 	// strip tag if image has digest and tag
-	ref = imageNameWithDigestOrTag(ref)
+	ref = ImageNameWithDigestOrTag(ref)
 	// add default tag "latest"
 	ref = reference.TagNameOnly(ref)
 
@@ -202,9 +202,9 @@ func NewImage(conf *Config) (*Image, error) {
 	return image, nil
 }
 
-// imageNameWithDigestOrTag strips the tag from ambiguous image references that have a digest as well (e.g. `image:tag@sha256:123...`).
+// ImageNameWithDigestOrTag strips the tag from ambiguous image references that have a digest as well (e.g. `image:tag@sha256:123...`).
 // Based on https://github.com/cri-o/cri-o/pull/3060
-func imageNameWithDigestOrTag(named reference.Named) reference.Named {
+func ImageNameWithDigestOrTag(named reference.Named) reference.Named {
 	_, isTagged := named.(reference.NamedTagged)
 	canonical, isDigested := named.(reference.Canonical)
 	if isTagged && isDigested {
