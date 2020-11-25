@@ -100,11 +100,11 @@ func getLayers(imageName string) []string {
 	if err != nil {
 		log.Fatalf("Failed to marshal config: %v", err)
 	}
-	log.Errorf("confB: %s", confB)
+	log.Debugf("Image config: %s", confB)
 	var layerCommands []string
 	for i, layerHistory := range conf.History {
 		if layerHistory.EmptyLayer {
-			log.Errorf("Skipping empty layer (%v): %s", i, layerHistory)
+			log.Infof("Skipping empty layer (%v): %+v", i, layerHistory)
 		}
 		layerCommands = append(layerCommands, layerHistory.CreatedBy)
 	}
@@ -363,6 +363,10 @@ func executeScan(conf *config) ([]*clair.Vulnerability, []*docker.FsLayerCommand
 	err = image.Pull()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to pull image: %v", err)
+	}
+
+	if err := image.FetchFsCommands(); err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch layer commands: %v", err)
 	}
 
 	if len(image.FsLayers) == 0 {

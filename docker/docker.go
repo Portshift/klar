@@ -286,11 +286,6 @@ func (i *Image) Pull() error {
 		return fmt.Errorf("failed to parse image response. request url=%s: %v", i.getPullReqUrl(), err)
 	}
 
-	i.FetchFsCommands()
-	if err := i.FetchFsCommands(); err != nil {
-		return fmt.Errorf("failed to fetch layer commands: %v", err)
-	}
-
 	return nil
 }
 
@@ -298,7 +293,7 @@ func (i *Image) GetFsCommands() []*FsLayerCommand {
 	return i.FsCommands
 }
 
-// Commands retrieves information about image layers commands from docker registry.
+// FetchFsCommands retrieves information about image layers commands from docker registry.
 func (i *Image) FetchFsCommands() error {
 	if i.FsCommands != nil {
 		log.Infof("Layer commands are already present")
@@ -326,12 +321,12 @@ func (i *Image) FetchFsCommands() error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %v", err)
 	}
-	log.Errorf("confB: %s", confB)
+	log.Debugf("Image config: %s", confB)
 
 	var commands []string
 	for i, layerHistory := range conf.History {
 		if layerHistory.EmptyLayer {
-			log.Errorf("Skipping empty layer (%v): %s", i, layerHistory)
+			log.Infof("Skipping empty layer (%v): %+v", i, layerHistory)
 			continue
 		}
 		commands = append(commands, layerHistory.CreatedBy)
@@ -361,7 +356,7 @@ func (i *Image) FetchFsCommands() error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal layer commands: %v", err)
 	}
-	log.Errorf("layerCommandsB: %s", layerCommandsB)
+	log.Debugf("Layers commands: %s", layerCommandsB)
 
 	i.FsCommands = layerCommands
 
@@ -441,7 +436,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 			return fmt.Errorf("failed to convert schema1 from manifest: %v", err)
 		}
 		for i, compatibility := range schema1.ExtractedV1Compatibility {
-			log.Errorf("layer %v: cmd: %v", i, compatibility.ContainerConfig.Cmd)
+			log.Debugf("layer %v: cmd: %v", i, compatibility.ContainerConfig.Cmd)
 		}
 		var imageV1 imageV1
 		err = json.Unmarshal(body, &imageV1)
@@ -549,19 +544,12 @@ func (i *Image) pullReq() (*http.Response, error) {
 
 	// Prefer manifest schema v2
 	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.v1+prettyjws, application/vnd.docker.distribution.manifest.list.v2+json")
-	//req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v1+prettyjws")
-	//req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
-	//req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.list.v2+json")
-	fmt.Printf("REQUEST START!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
 	utils.DumpRequest(req)
-	fmt.Printf("REQUEST END!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
 	resp, err := i.client.Do(req)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed execute the request")
 		return nil, fmt.Errorf("failed execute the request. url=%v: %v", url, err)
 	}
-	fmt.Printf("RESPONSE START!!!!!!!!!!!!!!!!!!!!!\n")
 	utils.DumpResponse(resp)
-	fmt.Printf("RESPONSE END!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
 	return resp, nil
 }
