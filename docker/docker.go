@@ -438,18 +438,21 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		for i, compatibility := range schema1.ExtractedV1Compatibility {
 			log.Debugf("layer %v: cmd: %v", i, compatibility.ContainerConfig.Cmd)
 		}
-		var imageV1 imageV1
-		err = json.Unmarshal(body, &imageV1)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal imageV1: %v", err)
+		if len(schema1.FSLayers) != len(schema1.ExtractedV1Compatibility) {
+			return fmt.Errorf("number of layers(%v) doesn't match the number of commands(%v)", len(schema1.FSLayers), len(schema1.ExtractedV1Compatibility))
 		}
-		image.FsLayers = make([]FsLayer, len(imageV1.FsLayers))
-		// in schemaVersion 1 layers are in reverse order, so we save them in the same order as v2
+		image.FsLayers = make([]FsLayer, len(schema1.FSLayers))
+		image.FsCommands = make([]*FsLayerCommand, len(schema1.FSLayers))
+		// in schemaVersion 1 layers and commands are in reverse order, so we save them in the same order as v2
 		// base layer is the first
-		for i := range imageV1.FsLayers {
-			image.FsLayers[len(imageV1.FsLayers)-1-i].BlobSum = imageV1.FsLayers[i].BlobSum
+		for i := range schema1.FSLayers {
+			image.FsLayers[len(schema1.FSLayers)-1-i].BlobSum = schema1.FSLayers[i].BlobSum.String()
+			image.FsCommands[len(schema1.FSLayers)-1-i] = &FsLayerCommand{
+				Command: strings.Join(schema1.ExtractedV1Compatibility[len(schema1.FSLayers)-1-i].ContainerConfig.Cmd,","),
+				Layer:   schema1.FSLayers[i].BlobSum.String(),
+			}
 		}
-		image.schemaVersion = imageV1.SchemaVersion
+		image.schemaVersion = schema1.SchemaVersion
 	default:
 		dump, dumpErr := httputil.DumpResponse(resp, false)
 		if dumpErr != nil {
