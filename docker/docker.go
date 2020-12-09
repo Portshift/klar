@@ -429,7 +429,6 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		image.Digest = imageV2.Config.Digest
 		image.schemaVersion = imageV2.SchemaVersion
 	case "application/vnd.docker.distribution.manifest.v1+prettyjws":
-		//var imageV1 imageV1
 		body, err := ioutil.ReadAll(resp.Body)
 		schema1, err := docker_manifest.Schema1FromManifest(body)
 		if err != nil {
@@ -449,7 +448,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 			image.FsLayers[len(schema1.FSLayers)-1-i].BlobSum = schema1.FSLayers[i].BlobSum.String()
 			image.FsCommands[len(schema1.FSLayers)-1-i] = &FsLayerCommand{
 				Command: strings.Join(schema1.ExtractedV1Compatibility[len(schema1.FSLayers)-1-i].ContainerConfig.Cmd,","),
-				Layer:   schema1.FSLayers[i].BlobSum.String(),
+				Layer:   schema1.FSLayers[i].BlobSum.Hex(),
 			}
 		}
 		image.schemaVersion = schema1.SchemaVersion
