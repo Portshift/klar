@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -28,8 +28,8 @@ func TestParseIntOption(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		os.Setenv(optionClairThreshold, tc.value)
-		if got := parseIntOption(optionClairThreshold); got != tc.expected {
+		os.Setenv(OptionClairThreshold, tc.value)
+		if got := parseIntOption(OptionClairThreshold); got != tc.expected {
 			t.Errorf("expected %d got %d", tc.expected, got)
 		}
 	}
@@ -58,8 +58,8 @@ func TestParseBoolOption(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		os.Setenv(optionDockerInsecure, tc.value)
-		if got := parseBoolOption(optionDockerInsecure); got != tc.expected {
+		os.Setenv(OptionDockerInsecure, tc.value)
+		if got := parseBoolOption(OptionDockerInsecure); got != tc.expected {
 			t.Errorf("%q: expected %v got %v", tc.value, tc.expected, got)
 		}
 	}
@@ -72,12 +72,12 @@ func TestParseOutputPriority(t *testing.T) {
 		shouldFail bool
 	}{
 		{
-			priority: priorities[1],
-			expected: priorities[1],
+			priority: Priorities[1],
+			expected: Priorities[1],
 		},
 		{
 			priority: "",
-			expected: priorities[0],
+			expected: Priorities[0],
 		},
 		{
 			priority:   "xxx",
@@ -86,7 +86,7 @@ func TestParseOutputPriority(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		os.Setenv(optionClairOutput, tc.priority)
+		os.Setenv(OptionClairOutput, tc.priority)
 		p, err := parseOutputPriority()
 		if (err != nil) != tc.shouldFail {
 			t.Fatalf("expected error: %v, got: %v", tc.expected, err)
