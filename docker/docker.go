@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/Portshift/klar/types"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -283,7 +284,7 @@ func (i *Image) Pull() error {
 	}
 
 	if err := parseImageResponse(resp, i); err != nil {
-		return fmt.Errorf("failed to parse image response. request url=%s: %v", i.getPullReqUrl(), err)
+		return fmt.Errorf("failed to parse image response. request url=%s: %w", i.getPullReqUrl(), err)
 	}
 
 	return nil
@@ -439,14 +440,26 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		extractV1LayersWithCommands(image, schema1)
 		image.SchemaVersion = schema1.SchemaVersion
 	default:
+		err := getErrorFromStatusCode(resp.StatusCode)
 		dump, dumpErr := httputil.DumpResponse(resp, false)
 		if dumpErr != nil {
-			return fmt.Errorf("docker Registry responded with unsupported Content-Type (%v). dump error=%+v", contentType, dumpErr)
+			return fmt.Errorf("docker Registry responded with unsupported Content-Type (%v). dump error=%+v. %w", contentType, dumpErr, err)
 		}
 
-		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s", string(dump))
+		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s. %w", string(dump), err)
 	}
 	return nil
+}
+
+func getErrorFromStatusCode(code int) error {
+	switch code {
+	case http.StatusUnauthorized:
+		return types.ErrorUnauthorized
+	case http.StatusForbidden:
+		return types.ErrorForbidden
+	default:
+		return types.ErrorUnknown
+	}
 }
 
 func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1) {
