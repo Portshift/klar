@@ -3,6 +3,10 @@ package main
 import (
 	//	"bytes"
 	"encoding/json"
+	"github.com/Portshift/klar/config"
+	"github.com/Portshift/klar/format"
+	"github.com/Portshift/klar/run"
+
 	//"github.com/aquasecurity/fanal/image/daemon"
 	"github.com/containers/image/v5/pkg/blobinfocache/none"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -10,6 +14,7 @@ import (
 	"golang.org/x/xerrors"
 	"time"
 
+	"context"
 	//"encoding/json"
 	"fmt"
 	"github.com/Portshift/klar/clair"
@@ -21,22 +26,21 @@ import (
 	"github.com/containers/image/v5/manifest"
 	image_types "github.com/containers/image/v5/types"
 	log "github.com/sirupsen/logrus"
-	"context"
+	fanal_token "github.com/aquasecurity/fanal/image/token"
 	//fanal_image "github.com/aquasecurity/fanal/image"
 	fanal_types "github.com/aquasecurity/fanal/types"
-	//"github.com/wagoodman/dive/dive"
-	"os"
+	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/google/go-containerregistry/pkg/authn"
-	fanal_token "github.com/aquasecurity/fanal/image/token"
+	//"github.com/wagoodman/dive/dive"
+	"os"
 
-	"net/http"
 	"crypto/tls"
+	"net/http"
 )
 
-func exit(code int, conf *config, scanResults *forwarding.ImageVulnerabilities) {
+func exit(code int, conf *config.Config, scanResults *forwarding.ImageVulnerabilities) {
 	if err := forwarding.SendScanResults(conf.ResultServicePath, scanResults); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)
 	}
@@ -354,7 +358,7 @@ func (d DockerExtractor) Extract(ctx context.Context, imageName string, filterFu
 	return fileMap, nil
 }
  */
-func executeScan(conf *config) ([]*clair.Vulnerability, []*docker.FsLayerCommand, error) {
+func executeScan(conf *config.Config) ([]*clair.Vulnerability, []*docker.FsLayerCommand, error) {
 	image, err := docker.NewImage(&conf.DockerConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse name: %v", err)
@@ -408,13 +412,13 @@ func main() {
 
 	result.Image = imageName
 
-	conf, err := newConfig(imageName)
+	conf, err := config.NewConfig(imageName)
 	if err != nil {
 		log.Errorf("Invalid options: %v", err)
 		os.Exit(2)
 	}
 
-	vulnerabilities, commands, err := executeScan(conf)
+	vulnerabilities, commands, err := run.ExecuteScan(conf)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to execute scan: %v", err)
 		log.Errorf(errStr)
@@ -434,7 +438,7 @@ func main() {
 	log.Infof("resultB: %s", resultB)
 
 	log.Infof("Found %d vulnerabilities", len(vulnerabilities))
-	vsNumber := printVulnerabilities(conf, vulnerabilities)
+	vsNumber := format.PrintVulnerabilities(conf, vulnerabilities)
 
 	if conf.Threshold != 0 && vsNumber > conf.Threshold {
 		exit(1, conf, result)
@@ -446,7 +450,7 @@ func main() {
 }
 
 func initLogs() {
-	if os.Getenv(optionKlarTrace) == "true" {
+	if os.Getenv(config.OptionKlarTrace) == "true" {
 		log.SetLevel(log.DebugLevel)
 	}
 }
