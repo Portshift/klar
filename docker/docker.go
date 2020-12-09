@@ -283,7 +283,7 @@ func (i *Image) Pull() error {
 	}
 
 	if err := parseImageResponse(resp, i); err != nil {
-		return fmt.Errorf("failed to parse image response. request url=%s: %v", i.getPullReqUrl(), err)
+		return fmt.Errorf("failed to parse image response. request url=%s: %w", i.getPullReqUrl(), err)
 	}
 
 	return nil
@@ -408,6 +408,11 @@ func newDockerImage(ctx context.Context, imageName string, option fanal_types.Do
 }
 
 func parseImageResponse(resp *http.Response, image *Image) error {
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return utils.ErrorUnauthorized
+	}
+
 	switch contentType := resp.Header.Get("Content-Type"); contentType {
 	case "application/vnd.docker.distribution.manifest.v2+json":
 		var imageV2 imageV2

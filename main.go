@@ -52,9 +52,9 @@ func main() {
 
 	scanResults, err := run.ExecuteScan(conf)
 	if err != nil {
-		errStr := fmt.Sprintf("Failed to execute scan: %v", err)
-		log.Errorf(errStr)
-		result.ScanErrMsg = errStr
+		errMsg := fmt.Errorf("failed to execute scan: %w", err)
+		log.Error(errMsg)
+		result.ScanErr = errMsg
 		exit(2, conf, result)
 	}
 

@@ -114,7 +114,7 @@ func (c *Clair) Analyse(image *docker.Image) ([]*Vulnerability, error) {
 	}
 
 	if err := c.api.Push(image); err != nil {
-		return nil, fmt.Errorf("push image %s/%s:%s to Clair failed: %s\n", image.Registry, image.Name, image.Reference, err.Error())
+		return nil, fmt.Errorf("push image %s/%s:%s to Clair failed: %w\n", image.Registry, image.Name, image.Reference, err)
 	}
 	vs, err := c.api.Analyze(image)
 	if err != nil {

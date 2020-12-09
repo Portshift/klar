@@ -72,7 +72,7 @@ func (a *apiV1) pushLayer(layer *layer) error {
 		if err != nil {
 			return fmt.Errorf("can't even read an error message: %s", err)
 		}
-		return fmt.Errorf("push error %d: %s", response.StatusCode, string(body))
+		return fmt.Errorf("push error %d: %s. %w", response.StatusCode, string(body), utils.ErrorClairServer)
 	}
 	return nil
 }
