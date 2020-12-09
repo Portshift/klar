@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/Portshift/klar/types"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -72,7 +73,7 @@ func (a *apiV1) pushLayer(layer *layer) error {
 		if err != nil {
 			return fmt.Errorf("can't even read an error message: %s", err)
 		}
-		return fmt.Errorf("push error %d: %s. %w", response.StatusCode, string(body), utils.ErrorClairServer)
+		return fmt.Errorf("push error %d: %s. %w", response.StatusCode, string(body), types.ErrorClairServer)
 	}
 	return nil
 }

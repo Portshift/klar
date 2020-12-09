@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/Portshift/klar/types"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -410,7 +411,7 @@ func newDockerImage(ctx context.Context, imageName string, option fanal_types.Do
 func parseImageResponse(resp *http.Response, image *Image) error {
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return utils.ErrorUnauthorized
+		return types.ErrorUnauthorized
 	}
 
 	switch contentType := resp.Header.Get("Content-Type"); contentType {
