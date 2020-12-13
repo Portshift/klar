@@ -107,7 +107,7 @@ func (a *apiV1) Analyze(image *docker.Image) ([]*Vulnerability, error) {
 			//since we are appending a pointer to the variable to the slice, we need to create a copy of the struct
 			//otherwise the slice winds up with multiple pointers to the same struct
 			vulnerability := v
-			// we are interested only in hash (without the algorithm)
+			// AddedBy will be in the form of: aaabbb where image.Digest is sha256:aaa and layer hash is bbb. Need to strip image hash prefix
 			vulnerability.LayerHash = strings.TrimPrefix(f.AddedBy, docker.TrimDigest(image.Digest))
 			vs = append(vs, &vulnerability)
 		}
