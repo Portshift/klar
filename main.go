@@ -1,16 +1,19 @@
 package main
 
 import (
+	"github.com/Portshift/klar/config"
+	"github.com/Portshift/klar/format"
+	"github.com/Portshift/klar/run"
+
 	"fmt"
 	"github.com/Portshift/klar/clair"
-	"github.com/Portshift/klar/docker"
 	"github.com/Portshift/klar/forwarding"
 	vulutils "github.com/Portshift/klar/utils/vulnerability"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
 
-func exit(code int, conf *config, scanResults *forwarding.ImageVulnerabilities) {
+func exit(code int, conf *config.Config, scanResults *forwarding.ImageVulnerabilities) {
 	if err := forwarding.SendScanResults(conf.ResultServicePath, scanResults); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)
 	}
@@ -23,38 +26,6 @@ func getImageName() (string, error) {
 	}
 
 	return os.Args[1], nil
-}
-
-func executeScan(conf *config) ([]*clair.Vulnerability, error) {
-	image, err := docker.NewImage(&conf.DockerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse name: %v", err)
-	}
-
-	err = image.Pull()
-	if err != nil {
-		return nil, fmt.Errorf("failed to pull image: %v", err)
-	}
-
-	if len(image.FsLayers) == 0 {
-		return nil, fmt.Errorf("failed to pull pull fsLayers")
-	}
-
-	log.Infof("Analysing %d layers", len(image.FsLayers))
-
-	var vulnerabilities []*clair.Vulnerability
-
-	c := clair.NewClair(conf.ClairAddr, conf.ClairTimeout)
-	vulnerabilities, err = c.Analyse(image)
-	if err != nil {
-		log.Errorf("Failed to analyze using API: %s", err)
-	} else {
-		if !conf.JSONOutput {
-			log.Infof("Got results from Clair API")
-		}
-	}
-
-	return vulnerabilities, err
 }
 
 func main() {
@@ -73,13 +44,13 @@ func main() {
 
 	result.Image = imageName
 
-	conf, err := newConfig(imageName)
+	conf, err := config.NewConfig(imageName)
 	if err != nil {
 		log.Errorf("Invalid options: %v", err)
 		os.Exit(2)
 	}
 
-	vulnerabilities, err := executeScan(conf)
+	vulnerabilities, commands, err := run.ExecuteScan(conf)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to execute scan: %v", err)
 		log.Errorf(errStr)
@@ -88,10 +59,11 @@ func main() {
 	}
 
 	result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, vulnerabilities)
+	result.LayerCommands = commands
 	result.Success = true
 
 	log.Infof("Found %d vulnerabilities", len(vulnerabilities))
-	vsNumber := printVulnerabilities(conf, vulnerabilities)
+	vsNumber := format.PrintVulnerabilities(conf, vulnerabilities)
 
 	if conf.Threshold != 0 && vsNumber > conf.Threshold {
 		exit(1, conf, result)
@@ -103,7 +75,7 @@ func main() {
 }
 
 func initLogs() {
-	if os.Getenv(optionKlarTrace) == "true" {
+	if os.Getenv(config.OptionKlarTrace) == "true" {
 		log.SetLevel(log.DebugLevel)
 	}
 }
