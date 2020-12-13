@@ -9,10 +9,8 @@ require (
 	github.com/containers/image/v5 v5.4.4
 	github.com/google/go-containerregistry v0.0.0-20200331213917-3d03ed9b1ca2
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/sirupsen/logrus v1.6.0
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
-	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.17.4
 	k8s.io/kubernetes v1.17.3
 )
