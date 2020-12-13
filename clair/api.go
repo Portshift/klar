@@ -107,10 +107,8 @@ func (a *apiV1) Analyze(image *docker.Image) ([]*Vulnerability, error) {
 			//since we are appending a pointer to the variable to the slice, we need to create a copy of the struct
 			//otherwise the slice winds up with multiple pointers to the same struct
 			vulnerability := v
-			if vulnerability.Metadata == nil {
-				vulnerability.Metadata = make(map[string]interface{})
-			}
-			vulnerability.Layer = strings.TrimPrefix(f.AddedBy, docker.TrimDigest(image.Digest))
+			// we are interested only in hash (without the algorithm)
+			vulnerability.LayerHash = strings.TrimPrefix(f.AddedBy, docker.TrimDigest(image.Digest))
 			vs = append(vs, &vulnerability)
 		}
 	}

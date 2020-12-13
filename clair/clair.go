@@ -55,7 +55,7 @@ type Vulnerability struct {
 	FixedIn        []feature              `json:"FixedIn,omitempty"`
 	FeatureName    string                 `json:"FeatureName",omitempty`
 	FeatureVersion string                 `json:"FeatureVersion",omitempty`
-	Layer          string                 `json:"Layer",omitempty`
+	LayerHash      string                 `json:"LayerHash",omitempty`
 }
 
 type layerError struct {

@@ -1,10 +1,13 @@
 package docker
 
 import (
+	"encoding/json"
 	"fmt"
+	docker_manifest "github.com/containers/image/v5/manifest"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -143,5 +146,92 @@ func TestPullManifestSchemaV2(t *testing.T) {
 	}
 	if len(image.FsLayers) == 0 {
 		t.Fatal("Can't pull fsLayers")
+	}
+}
+
+func Test_extractV1LayersWithCommands(t *testing.T) {
+	command1 := docker_manifest.Schema1V1Compatibility{}
+	command1.ContainerConfig.Cmd = []string{"command1"}
+	command2 := docker_manifest.Schema1V1Compatibility{}
+	command2.ContainerConfig.Cmd = []string{"command2"}
+	type args struct {
+		image   *Image
+		schema1 *docker_manifest.Schema1
+	}
+	tests := []struct {
+		name string
+		args args
+		want *Image
+	}{
+		{
+			name: "Empty",
+			args: args{
+				image: &Image{
+					FsLayers:   nil,
+					FsCommands: nil,
+				},
+				schema1: &docker_manifest.Schema1{
+					FSLayers:                 nil,
+					ExtractedV1Compatibility: nil,
+				},
+			},
+			want: &Image{
+				FsLayers:   make([]FsLayer, 0),
+				FsCommands: make([]*FsLayerCommand, 0),
+			},
+		},
+		{
+			name: "two layers with commands - should be reversed",
+			args: args{
+				image: &Image{
+					FsLayers:   make([]FsLayer, 0),
+					FsCommands: make([]*FsLayerCommand, 0),
+				},
+				schema1: &docker_manifest.Schema1{
+					FSLayers:                 []docker_manifest.Schema1FSLayers{
+						{
+							BlobSum: "sha256:bbb",
+						},
+						{
+							BlobSum: "sha256:aaa",
+						},
+					},
+					ExtractedV1Compatibility: []docker_manifest.Schema1V1Compatibility{
+						command2,
+						command1,
+					},
+				},
+			},
+			want: &Image{
+				FsLayers:   []FsLayer{
+					{
+						BlobSum: "sha256:aaa",
+					},
+					{
+						BlobSum: "sha256:bbb",
+					},
+				},
+				FsCommands: []*FsLayerCommand{
+					{
+						Command: "command1",
+						Layer:   "aaa",
+					},
+					{
+						Command: "command2",
+						Layer:   "bbb",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			extractV1LayersWithCommands(tt.args.image, tt.args.schema1)
+			if !reflect.DeepEqual(tt.args.image, tt.want) {
+				gotB, _ := json.Marshal(tt.args.image)
+				wantB, _ := json.Marshal(tt.want)
+				t.Fatalf("extractV1LayersWithCommands()=%s, want=%s", gotB, wantB)
+			}
+		})
 	}
 }

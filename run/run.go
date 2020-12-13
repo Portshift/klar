@@ -19,7 +19,7 @@ func ExecuteScan(conf *config.Config) ([]*clair.Vulnerability, []*docker.FsLayer
 		return nil, nil, fmt.Errorf("failed to pull image: %v", err)
 	}
 
-	if err := image.FetchFsCommands(); err != nil {
+	if err := image.FetchFsCommands(&conf.DockerConfig); err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch layer commands: %v", err)
 	}
 

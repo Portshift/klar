@@ -5,15 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/Portshift/klar/docker/token"
-	fanal_token "github.com/aquasecurity/fanal/image/token"
-	"github.com/containers/image/v5/docker/reference"
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/hashicorp/go-multierror"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -22,12 +13,21 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/Portshift/klar/docker/token"
+	"github.com/containers/image/v5/docker/reference"
 	docker_manifest "github.com/containers/image/v5/manifest"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/hashicorp/go-multierror"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/xerrors"
 
 	containerregistry_v1 "github.com/google/go-containerregistry/pkg/v1"
 
+	fanal_token "github.com/aquasecurity/fanal/image/token"
 	fanal_types "github.com/aquasecurity/fanal/types"
-
 
 	"github.com/Portshift/klar/utils"
 )
@@ -43,7 +43,7 @@ const (
 type Image struct {
 	Registry      string
 	Name          string
-	Reference     string  // Tag or digest
+	Reference     string // Tag or digest
 	FsLayers      []FsLayer
 	FsCommands    []*FsLayerCommand
 	Token         string
@@ -82,10 +82,9 @@ type FsLayer struct {
 
 // FsLayerCommand represents a history command of a layer in a docker image
 type FsLayerCommand struct {
-	Command  string
-	Layer    string
+	Command string
+	Layer   string
 }
-
 
 // ImageV1 represents a Manifest V 2, Schema 1 Docker Image
 type imageV1 struct {
@@ -149,6 +148,7 @@ type Config struct {
 }
 
 const dockerHub = "registry-1.docker.io"
+
 // github.com/containers/image/v5/docker/reference/normalize.go
 const defaultDomain = "docker.io"
 
@@ -168,12 +168,12 @@ func NewImage(conf *Config) (*Image, error) {
 	}
 
 	image := &Image{
-		user:     conf.User,
-		password: conf.Password,
-		Token:    "",
-		client:   client,
-		os:       "linux",
-		arch:     "amd64",
+		user:      conf.User,
+		password:  conf.Password,
+		Token:     "",
+		client:    client,
+		os:        "linux",
+		arch:      "amd64",
 		imageName: conf.ImageName,
 	}
 
@@ -294,18 +294,19 @@ func (i *Image) GetFsCommands() []*FsLayerCommand {
 }
 
 // FetchFsCommands retrieves information about image layers commands from docker registry.
-func (i *Image) FetchFsCommands() error {
+func (i *Image) FetchFsCommands(config *Config) error {
 	if i.FsCommands != nil {
 		log.Infof("Layer commands are already present")
 		return nil
 	}
 	ctx := context.Background()
-
 	opts := fanal_types.DockerOption{
-		Timeout:  90*time.Second,
-		SkipPing: true,
-		UserName: i.user,
-		Password: i.password,
+		Timeout:               90 * time.Second,
+		SkipPing:              true,
+		UserName:              i.user,
+		Password:              i.password,
+		NonSSL:                config.InsecureRegistry,
+		InsecureSkipTLSVerify: config.InsecureTLS,
 	}
 	img, cleanup, err := newDockerImage(ctx, i.imageName, opts)
 	if err != nil {
@@ -375,14 +376,6 @@ func newDockerImage(ctx context.Context, imageName string, option fanal_types.Do
 		return nil, func() {}, xerrors.Errorf("failed to parse the image name: %w", err)
 	}
 
-	//// Try accessing Docker Daemon
-	//img, cleanup, err := daemon.Image(ref)
-	//if err == nil {
-	//	// Return v1.Image if the image is found in Docker Engine
-	//	return img, cleanup, nil
-	//}
-	//result = multierror.Append(result, err)
-
 	// Try accessing Docker Registry
 	var remoteOpts []remote.Option
 	if option.InsecureSkipTLSVerify {
@@ -430,6 +423,9 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		image.schemaVersion = imageV2.SchemaVersion
 	case "application/vnd.docker.distribution.manifest.v1+prettyjws":
 		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response body: %v", err)
+		}
 		schema1, err := docker_manifest.Schema1FromManifest(body)
 		if err != nil {
 			return fmt.Errorf("failed to convert schema1 from manifest: %v", err)
@@ -440,17 +436,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		if len(schema1.FSLayers) != len(schema1.ExtractedV1Compatibility) {
 			return fmt.Errorf("number of layers(%v) doesn't match the number of commands(%v)", len(schema1.FSLayers), len(schema1.ExtractedV1Compatibility))
 		}
-		image.FsLayers = make([]FsLayer, len(schema1.FSLayers))
-		image.FsCommands = make([]*FsLayerCommand, len(schema1.FSLayers))
-		// in schemaVersion 1 layers and commands are in reverse order, so we save them in the same order as v2
-		// base layer is the first
-		for i := range schema1.FSLayers {
-			image.FsLayers[len(schema1.FSLayers)-1-i].BlobSum = schema1.FSLayers[i].BlobSum.String()
-			image.FsCommands[len(schema1.FSLayers)-1-i] = &FsLayerCommand{
-				Command: strings.Join(schema1.ExtractedV1Compatibility[len(schema1.FSLayers)-1-i].ContainerConfig.Cmd,","),
-				Layer:   schema1.FSLayers[i].BlobSum.Hex(),
-			}
-		}
+		extractV1LayersWithCommands(image, schema1)
 		image.schemaVersion = schema1.SchemaVersion
 	default:
 		dump, dumpErr := httputil.DumpResponse(resp, false)
@@ -461,6 +447,20 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s", string(dump))
 	}
 	return nil
+}
+
+func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1) {
+	image.FsLayers = make([]FsLayer, len(schema1.FSLayers))
+	image.FsCommands = make([]*FsLayerCommand, len(schema1.FSLayers))
+	// in schemaVersion 1 layers and commands are in reverse order, so we save them in the same order as v2
+	// base layer is the first
+	for i := range schema1.FSLayers {
+		image.FsLayers[len(schema1.FSLayers)-1-i].BlobSum = schema1.FSLayers[i].BlobSum.String()
+		image.FsCommands[len(schema1.FSLayers)-1-i] = &FsLayerCommand{
+			Command: strings.Join(schema1.ExtractedV1Compatibility[i].ContainerConfig.Cmd, ","),
+			Layer:   schema1.FSLayers[i].BlobSum.Hex(),
+		}
+	}
 }
 
 func parseManifestResponse(resp *http.Response, image *Image) error {

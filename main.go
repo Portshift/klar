@@ -1,13 +1,10 @@
 package main
 
 import (
-	//	"bytes"
-	"encoding/json"
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/format"
 	"github.com/Portshift/klar/run"
 
-	//"encoding/json"
 	"fmt"
 	"github.com/Portshift/klar/clair"
 	"github.com/Portshift/klar/forwarding"
@@ -64,13 +61,6 @@ func main() {
 	result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, vulnerabilities)
 	result.LayerCommands = commands
 	result.Success = true
-
-	resultB, err := json.Marshal(result)
-	if err != nil {
-		log.Errorf("Failed to marshal result: %v", err)
-		os.Exit(2)
-	}
-	log.Infof("resultB: %s", resultB)
 
 	log.Infof("Found %d vulnerabilities", len(vulnerabilities))
 	vsNumber := format.PrintVulnerabilities(conf, vulnerabilities)
