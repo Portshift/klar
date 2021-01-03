@@ -51,7 +51,7 @@ type Image struct {
 	password      string
 	client        http.Client
 	Digest        string
-	schemaVersion int
+	SchemaVersion int
 	os            string
 	arch          string
 	imageName     string
@@ -65,7 +65,7 @@ func (i *Image) LayerName(index int) string {
 
 func (i *Image) AnalyzedLayerName() string {
 	index := len(i.FsLayers) - 1
-	if i.schemaVersion == 1 {
+	if i.SchemaVersion == 1 {
 		index = 0
 	}
 	return i.LayerName(index)
@@ -420,7 +420,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 			image.FsLayers[i].BlobSum = imageV2.Layers[i].Digest
 		}
 		image.Digest = imageV2.Config.Digest
-		image.schemaVersion = imageV2.SchemaVersion
+		image.SchemaVersion = imageV2.SchemaVersion
 	case "application/vnd.docker.distribution.manifest.v1+prettyjws":
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -437,7 +437,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 			return fmt.Errorf("number of layers(%v) doesn't match the number of commands(%v)", len(schema1.FSLayers), len(schema1.ExtractedV1Compatibility))
 		}
 		extractV1LayersWithCommands(image, schema1)
-		image.schemaVersion = schema1.SchemaVersion
+		image.SchemaVersion = schema1.SchemaVersion
 	default:
 		dump, dumpErr := httputil.DumpResponse(resp, false)
 		if dumpErr != nil {
