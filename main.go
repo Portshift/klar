@@ -50,7 +50,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	vulnerabilities, commands, err := run.ExecuteScan(conf)
+	scanResults, err := run.ExecuteScan(conf)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to execute scan: %v", err)
 		log.Errorf(errStr)
@@ -58,12 +58,12 @@ func main() {
 		exit(2, conf, result)
 	}
 
-	result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, vulnerabilities)
-	result.LayerCommands = commands
+	result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, scanResults.Vulnerabilities)
+	result.LayerCommands = scanResults.FsLayerCommands
 	result.Success = true
 
-	log.Infof("Found %d vulnerabilities", len(vulnerabilities))
-	vsNumber := format.PrintVulnerabilities(conf, vulnerabilities)
+	log.Infof("Found %d vulnerabilities", len(scanResults.Vulnerabilities))
+	vsNumber := format.PrintVulnerabilities(conf, scanResults.Vulnerabilities)
 
 	if conf.Threshold != 0 && vsNumber > conf.Threshold {
 		exit(1, conf, result)
