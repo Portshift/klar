@@ -6,18 +6,19 @@ import (
 	"fmt"
 	"github.com/Portshift/klar/clair"
 	"github.com/Portshift/klar/docker"
+	"github.com/Portshift/klar/types"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 )
 
-	type ImageVulnerabilities struct {
-	Vulnerabilities []*clair.Vulnerability `json:"vulnerability"`
+type ImageVulnerabilities struct {
+	Vulnerabilities []*clair.Vulnerability   `json:"vulnerability"`
 	LayerCommands   []*docker.FsLayerCommand `json:"layerCommands"`
-	Image           string                 `json:"image"`
-	Success         bool                   `json:"success"`
-	ScanUUID        string                 `json:"scanuuid"`
-	ScanErr         error                  `json:"scanErr"`
+	Image           string                   `json:"image"`
+	Success         bool                     `json:"success"`
+	ScanUUID        string                   `json:"scanuuid"`
+	ScanErr         types.ScanError          `json:"scanErr"`
 }
 
 func SendScanResults(resultServicePath string, scanResults *ImageVulnerabilities) error {

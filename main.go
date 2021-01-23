@@ -4,6 +4,7 @@ import (
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/format"
 	"github.com/Portshift/klar/run"
+	"github.com/Portshift/klar/types"
 
 	"fmt"
 	"github.com/Portshift/klar/clair"
@@ -54,7 +55,7 @@ func main() {
 	if err != nil {
 		errMsg := fmt.Errorf("failed to execute scan: %w", err)
 		log.Error(errMsg)
-		result.ScanErr = errMsg
+		result.ScanErr = types.ConvertError(errMsg)
 		exit(2, conf, result)
 	}
 
