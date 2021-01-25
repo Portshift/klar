@@ -450,7 +450,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 			return fmt.Errorf("docker Registry responded with unsupported Content-Type (%v). dump error=%+v", contentType, dumpErr)
 		}
 
-		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s", string(dump))
+		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s. %w", string(dump), types.ErrorUnauthorized)
 	}
 	return nil
 }
