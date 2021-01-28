@@ -409,11 +409,6 @@ func newDockerImage(ctx context.Context, imageName string, option fanal_types.Do
 }
 
 func parseImageResponse(resp *http.Response, image *Image) error {
-	switch resp.StatusCode {
-	case http.StatusUnauthorized:
-		return types.ErrorUnauthorized
-	}
-
 	switch contentType := resp.Header.Get("Content-Type"); contentType {
 	case "application/vnd.docker.distribution.manifest.v2+json":
 		var imageV2 imageV2
@@ -445,14 +440,26 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		extractV1LayersWithCommands(image, schema1)
 		image.SchemaVersion = schema1.SchemaVersion
 	default:
+		err := getErrorFromStatusCode(resp.StatusCode)
 		dump, dumpErr := httputil.DumpResponse(resp, false)
 		if dumpErr != nil {
-			return fmt.Errorf("docker Registry responded with unsupported Content-Type (%v). dump error=%+v", contentType, dumpErr)
+			return fmt.Errorf("docker Registry responded with unsupported Content-Type (%v). dump error=%+v. %w", contentType, dumpErr, err)
 		}
 
-		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s. %w", string(dump), types.ErrorUnauthorized)
+		return fmt.Errorf("docker Registry responded with unsupported Content-Type: response=%s. %w", string(dump), err)
 	}
 	return nil
+}
+
+func getErrorFromStatusCode(code int) error {
+	switch code {
+	case http.StatusUnauthorized:
+		return types.ErrorUnauthorized
+	case http.StatusForbidden:
+		return types.ErrorForbidden
+	default:
+		return types.ErrorUnknown
+	}
 }
 
 func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1) {
