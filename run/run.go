@@ -23,7 +23,7 @@ func ExecuteScan(conf *config.Config) (*ScanResults, error) {
 
 	err = image.Pull()
 	if err != nil {
-		return nil, fmt.Errorf("failed to pull image: %v", err)
+		return nil, fmt.Errorf("failed to pull image: %w", err)
 	}
 
 	if err := image.FetchFsCommands(&conf.DockerConfig); err != nil {
