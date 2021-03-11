@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Portshift/klar/types"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -14,9 +15,15 @@ import (
 	"github.com/Portshift/klar/utils"
 )
 
+// Interface for easier testing
+//go:generate $GOPATH/bin/mockgen -destination=./mock_http_client.go -package=clair github.com/Portshift/klar/clair HTTPClient
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type apiV1 struct {
 	url    string
-	client http.Client
+	client HTTPClient
 }
 
 func newAPIV1(url string, timeout time.Duration) *apiV1 {
@@ -28,7 +35,7 @@ func newAPIV1(url string, timeout time.Duration) *apiV1 {
 	}
 	return &apiV1{
 		url: url,
-		client: http.Client{
+		client: &http.Client{
 			Timeout: timeout,
 		},
 	}
@@ -57,7 +64,7 @@ func (a *apiV1) pushLayer(layer *layer) error {
 	}
 	request.Header.Set("Content-Type", "application/json")
 	utils.DumpRequest(request)
-	response, err := a.client.Do(request)
+	response, err := a.sendWithRetries(request)
 	if err != nil {
 		return fmt.Errorf("can't push layer to Clair: %s", err)
 	}
@@ -78,6 +85,34 @@ func (a *apiV1) pushLayer(layer *layer) error {
 	return nil
 }
 
+const maxRetries = 5
+const retryIntervalSec = 1
+
+func (a *apiV1) sendWithRetries(request *http.Request) (*http.Response, error) {
+	response, err := a.client.Do(request)
+	if err != nil {
+		log.Debugf("Failed to send request, retrying for %v times", maxRetries)
+		timer := time.After(time.Duration(maxRetries) * time.Second)
+		ticker := time.NewTicker(time.Duration(retryIntervalSec) * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-timer:
+				return nil, fmt.Errorf("failed to send request after %v retries", maxRetries)
+			case <-ticker.C:
+				log.Debugf("Retrying to send request")
+				response, err := a.client.Do(request)
+				if err == nil {
+					log.Debugf("Successfully sent request")
+					return response, nil
+				}
+			}
+		}
+	}
+	return response, nil
+}
+
 func (a *apiV1) Analyze(image *docker.Image) ([]*Vulnerability, error) {
 	url := fmt.Sprintf("%s/v1/layers/%s?vulnerabilities", a.url, image.AnalyzedLayerName())
 	request, err := http.NewRequest("GET", url, nil)
@@ -85,7 +120,7 @@ func (a *apiV1) Analyze(image *docker.Image) ([]*Vulnerability, error) {
 		return nil, fmt.Errorf("can't create an analyze request: %s", err)
 	}
 	utils.DumpRequest(request)
-	response, err := a.client.Do(request)
+	response, err := a.sendWithRetries(request)
 	if err != nil {
 		return nil, err
 	}
