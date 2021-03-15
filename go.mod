@@ -7,6 +7,7 @@ require (
 	github.com/aquasecurity/fanal v0.0.0-20201028122920-48a25d865182
 	github.com/aws/aws-sdk-go v1.27.1
 	github.com/containers/image/v5 v5.4.4
+	github.com/golang/mock v1.2.0
 	github.com/google/go-containerregistry v0.0.0-20200331213917-3d03ed9b1ca2
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/sirupsen/logrus v1.6.0
