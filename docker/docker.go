@@ -258,14 +258,14 @@ func (i *Image) Pull() error {
 		if err != nil {
 			dump, dumpErr := httputil.DumpResponse(resp, false)
 			if dumpErr != nil {
-				return fmt.Errorf("failed to request token. dump error=%+v: %v", dumpErr, err)
+				return fmt.Errorf("failed to request token. dump error=%+v: %v. %w", dumpErr, err, types.ErrorUnauthorized)
 			}
-			return fmt.Errorf("failed to request token. response=%s: %v", string(dump), err)
+			return fmt.Errorf("failed to request token. response=%s: %v, %w", string(dump), err, types.ErrorUnauthorized)
 		}
 		// try again
 		resp, err = i.pullReq()
 		if err != nil {
-			return err
+			return fmt.Errorf("%v. %w", err, types.ErrorUnauthorized)
 		}
 		defer resp.Body.Close()
 	}
