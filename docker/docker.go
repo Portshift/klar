@@ -20,6 +20,7 @@ import (
 	docker_manifest "github.com/containers/image/v5/manifest"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
@@ -146,6 +147,7 @@ type Config struct {
 	Timeout          time.Duration
 	PlatformOS       string
 	PlatformArch     string
+	Local            bool
 }
 
 const dockerHub = "registry-1.docker.io"
@@ -294,34 +296,57 @@ func (i *Image) GetFsCommands() []*FsLayerCommand {
 	return i.FsCommands
 }
 
-// FetchFsCommands retrieves information about image layers commands from docker registry.
 func (i *Image) FetchFsCommands(config *Config) error {
 	if i.FsCommands != nil {
 		log.Infof("Layer commands are already present")
 		return nil
 	}
-	ctx := context.Background()
-	opts := fanal_types.DockerOption{
-		Timeout:               90 * time.Second,
-		SkipPing:              true,
-		UserName:              i.user,
-		Password:              i.password,
-		NonSSL:                config.InsecureRegistry,
-		InsecureSkipTLSVerify: config.InsecureTLS,
-	}
-	img, cleanup, err := newDockerImage(ctx, i.imageName, opts)
+
+	fsCommands, err := FetchFsCommands(config)
 	if err != nil {
-		return fmt.Errorf("failed to get docker image: %v", err)
+		return fmt.Errorf("failed to fetch layer commands: %v", err)
 	}
-	defer cleanup()
+	i.FsCommands = fsCommands
+
+	return nil
+}
+
+// FetchFsCommands retrieves information about image layers commands.
+func FetchFsCommands(config *Config) ([]*FsLayerCommand, error) {
+	var img containerregistry_v1.Image
+	if config.Local {
+		// Fetch from docker daemon
+		localImage, err := newLocalDockerImage(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get local image: %v", err)
+		}
+		img = localImage
+	} else {
+		// Fetch from registry
+		ctx := context.Background()
+		opts := fanal_types.DockerOption{
+			Timeout:               90 * time.Second,
+			SkipPing:              true,
+			UserName:              config.User,
+			Password:              config.Password,
+			NonSSL:                config.InsecureRegistry,
+			InsecureSkipTLSVerify: config.InsecureTLS,
+		}
+		remoteImage, cleanup, err := newRemoteDockerImage(ctx, config.ImageName, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get remote image: %v", err)
+		}
+		img = remoteImage
+		defer cleanup()
+	}
 
 	conf, err := img.ConfigFile()
 	if err != nil {
-		return fmt.Errorf("failed to get config file: %v", err)
+		return nil, fmt.Errorf("failed to get config file: %v", err)
 	}
 	confB, err := json.Marshal(conf)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %v", err)
+		return nil, fmt.Errorf("failed to marshal config: %v", err)
 	}
 	log.Debugf("Image config: %s", confB)
 
@@ -336,17 +361,17 @@ func (i *Image) FetchFsCommands(config *Config) error {
 	}
 	layers, err := img.Layers()
 	if err != nil {
-		return fmt.Errorf("failed to get layers: %v", err)
+		return nil, fmt.Errorf("failed to get layers: %v", err)
 	}
 	if len(layers) != len(commands) {
-		return fmt.Errorf("number of fs layers (%v) doesn't match the number of fs history entries (%v)", len(layers), len(commands))
+		return nil, fmt.Errorf("number of fs layers (%v) doesn't match the number of fs history entries (%v)", len(layers), len(commands))
 	}
 
 	var layerCommands []*FsLayerCommand
 	for i, layer := range layers {
 		layerDigest, err := layer.Digest()
 		if err != nil {
-			return fmt.Errorf("failed to get layer digest: %v", err)
+			return nil, fmt.Errorf("failed to get layer digest: %v", err)
 		}
 		layerCommands = append(layerCommands, &FsLayerCommand{
 			Command: commands[i],
@@ -356,16 +381,14 @@ func (i *Image) FetchFsCommands(config *Config) error {
 
 	layerCommandsB, err := json.Marshal(layerCommands)
 	if err != nil {
-		return fmt.Errorf("failed to marshal layer commands: %v", err)
+		return nil, fmt.Errorf("failed to marshal layer commands: %v", err)
 	}
 	log.Debugf("Layers commands: %s", layerCommandsB)
 
-	i.FsCommands = layerCommands
-
-	return nil
+	return layerCommands, nil
 }
 
-func newDockerImage(ctx context.Context, imageName string, option fanal_types.DockerOption) (containerregistry_v1.Image, func(), error) {
+func newRemoteDockerImage(ctx context.Context, imageName string, option fanal_types.DockerOption) (containerregistry_v1.Image, func(), error) {
 	var result error
 
 	var nameOpts []name.Option
@@ -406,6 +429,24 @@ func newDockerImage(ctx context.Context, imageName string, option fanal_types.Do
 	result = multierror.Append(result, err)
 
 	return nil, func() {}, result
+}
+
+func newLocalDockerImage(config *Config) (containerregistry_v1.Image, error) {
+	var nameOpts []name.Option
+	if config.InsecureRegistry {
+		nameOpts = append(nameOpts, name.Insecure)
+	}
+	ref, err := name.ParseReference(config.ImageName, nameOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the image name: %w", err)
+	}
+
+	img, err := daemon.Image(ref, daemon.WithUnbufferedOpener())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the image from daemon: %w", err)
+	}
+
+	return img, nil
 }
 
 func parseImageResponse(resp *http.Response, image *Image) error {
