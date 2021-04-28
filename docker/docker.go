@@ -311,12 +311,12 @@ func (i *Image) FetchFsCommands(config *Config) error {
 	return nil
 }
 
-// FetchFsCommands retrieves information about image layers commands from docker registry.
+// FetchFsCommands retrieves information about image layers commands.
 func FetchFsCommands(config *Config) ([]*FsLayerCommand, error) {
 	var img containerregistry_v1.Image
 	if config.Local {
 		// Fetch from docker daemon
-		localImage, err := newLocalDockerImage(config.ImageName)
+		localImage, err := newLocalDockerImage(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get local image: %v", err)
 		}
@@ -431,8 +431,12 @@ func newRemoteDockerImage(ctx context.Context, imageName string, option fanal_ty
 	return nil, func() {}, result
 }
 
-func newLocalDockerImage(imageName string) (containerregistry_v1.Image, error) {
-	ref, err := name.ParseReference(imageName, []name.Option{}...)
+func newLocalDockerImage(config *Config) (containerregistry_v1.Image, error) {
+	var nameOpts []name.Option
+	if config.InsecureRegistry {
+		nameOpts = append(nameOpts, name.Insecure)
+	}
+	ref, err := name.ParseReference(config.ImageName, nameOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse the image name: %w", err)
 	}
