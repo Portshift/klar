@@ -505,7 +505,9 @@ func getErrorFromStatusCode(code int) error {
 
 // Strips Dockerfile generation info from layer commands. e.g: "/bin/sh -c #(nop) CMD [/bin/bash]" -> "CMD [/bin/bash]"
 func stripDockerMetaFromCommand(command string) string {
-	return strings.TrimSpace(strings.TrimPrefix(command, "/bin/sh -c #(nop)"))
+	ret := strings.TrimSpace(strings.TrimPrefix(command, "/bin/sh -c #(nop)"))
+	ret = strings.TrimSpace(strings.TrimPrefix(ret, "/bin/sh -c"))
+	return ret
 }
 
 func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1) {

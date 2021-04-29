@@ -330,14 +330,21 @@ func Test_stripDockerMetaFromCommand(t *testing.T) {
 		{
 			name: "no strip",
 			args: args{
-				command: "bin/sh -c #(nopp) CMD [/bin/bash]",
+				command: "bin/sh #(nop) CMD [/bin/bash]",
 			},
-			want: "bin/sh -c #(nopp) CMD [/bin/bash]",
+			want: "bin/sh #(nop) CMD [/bin/bash]",
 		},
 		{
-			name: "strip",
+			name: "strip with #(nop)",
 			args: args{
 				command: "/bin/sh -c #(nop)           CMD [/bin/bash]      ",
+			},
+			want: "CMD [/bin/bash]",
+		},
+		{
+			name: "strip without #(nop)",
+			args: args{
+				command: "/bin/sh -c         CMD [/bin/bash]      ",
 			},
 			want: "CMD [/bin/bash]",
 		},
