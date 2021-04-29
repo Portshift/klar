@@ -508,15 +508,6 @@ func stripDockerMetaFromCommand(command string) string {
 	return strings.TrimSpace(strings.TrimPrefix(command, "/bin/sh -c #(nop)"))
 }
 
-func stripDockerMetaFromCommands(commands []string) []string {
-	var ret []string
-	for _, command := range commands {
-		ret = append(ret, stripDockerMetaFromCommand(command))
-	}
-
-	return ret
-}
-
 func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1) {
 	image.FsLayers = make([]FsLayer, len(schema1.FSLayers))
 	image.FsCommands = make([]*FsLayerCommand, len(schema1.FSLayers))
@@ -525,7 +516,7 @@ func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1)
 	for i := range schema1.FSLayers {
 		image.FsLayers[len(schema1.FSLayers)-1-i].BlobSum = schema1.FSLayers[i].BlobSum.String()
 		image.FsCommands[len(schema1.FSLayers)-1-i] = &FsLayerCommand{
-			Command: strings.Join(stripDockerMetaFromCommands(schema1.ExtractedV1Compatibility[i].ContainerConfig.Cmd), ","),
+			Command: stripDockerMetaFromCommand(strings.Join(schema1.ExtractedV1Compatibility[i].ContainerConfig.Cmd, " ")),
 			Layer:   schema1.FSLayers[i].BlobSum.Hex(),
 		}
 	}
