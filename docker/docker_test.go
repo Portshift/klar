@@ -154,6 +154,10 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 	command1.ContainerConfig.Cmd = []string{"command1"}
 	command2 := docker_manifest.Schema1V1Compatibility{}
 	command2.ContainerConfig.Cmd = []string{"command2"}
+	commandPartsToStrip := docker_manifest.Schema1V1Compatibility{}
+	commandPartsToStrip.ContainerConfig.Cmd = []string{"/bin/sh", "-c", "#(nop)", "CMD [/bin/bash]"}
+	commandToStrip := docker_manifest.Schema1V1Compatibility{}
+	commandToStrip.ContainerConfig.Cmd = []string{"/bin/sh -c #(nop)    CMD [/bin/bash]  "}
 	type args struct {
 		image   *Image
 		schema1 *docker_manifest.Schema1
@@ -223,6 +227,70 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "strip layer command with several parts",
+			args: args{
+				image: &Image{
+					FsLayers:   make([]FsLayer, 0),
+					FsCommands: make([]*FsLayerCommand, 0),
+				},
+				schema1: &docker_manifest.Schema1{
+					FSLayers:                 []docker_manifest.Schema1FSLayers{
+						{
+							BlobSum: "sha256:aaa",
+						},
+					},
+					ExtractedV1Compatibility: []docker_manifest.Schema1V1Compatibility{
+						commandPartsToStrip,
+					},
+				},
+			},
+			want: &Image{
+				FsLayers:   []FsLayer{
+					{
+						BlobSum: "sha256:aaa",
+					},
+				},
+				FsCommands: []*FsLayerCommand{
+					{
+						Command: "CMD [/bin/bash]",
+						Layer:   "aaa",
+					},
+				},
+			},
+		},
+		{
+			name: "strip layer command",
+			args: args{
+				image: &Image{
+					FsLayers:   make([]FsLayer, 0),
+					FsCommands: make([]*FsLayerCommand, 0),
+				},
+				schema1: &docker_manifest.Schema1{
+					FSLayers:                 []docker_manifest.Schema1FSLayers{
+						{
+							BlobSum: "sha256:aaa",
+						},
+					},
+					ExtractedV1Compatibility: []docker_manifest.Schema1V1Compatibility{
+						commandToStrip,
+					},
+				},
+			},
+			want: &Image{
+				FsLayers:   []FsLayer{
+					{
+						BlobSum: "sha256:aaa",
+					},
+				},
+				FsCommands: []*FsLayerCommand{
+					{
+						Command: "CMD [/bin/bash]",
+						Layer:   "aaa",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -231,6 +299,60 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 				gotB, _ := json.Marshal(tt.args.image)
 				wantB, _ := json.Marshal(tt.want)
 				t.Fatalf("extractV1LayersWithCommands()=%s, want=%s", gotB, wantB)
+			}
+		})
+	}
+}
+
+func Test_stripDockerMetaFromCommand(t *testing.T) {
+	type args struct {
+		command string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "empty",
+			args: args{
+				command: "",
+			},
+			want: "",
+		},
+		{
+			name: "space strip",
+			args: args{
+				command: "    space strip   ",
+			},
+			want: "space strip",
+		},
+		{
+			name: "no strip",
+			args: args{
+				command: "bin/sh #(nop) CMD [/bin/bash]",
+			},
+			want: "bin/sh #(nop) CMD [/bin/bash]",
+		},
+		{
+			name: "strip with #(nop)",
+			args: args{
+				command: "/bin/sh -c #(nop)           CMD [/bin/bash]      ",
+			},
+			want: "CMD [/bin/bash]",
+		},
+		{
+			name: "strip without #(nop)",
+			args: args{
+				command: "/bin/sh -c         CMD [/bin/bash]      ",
+			},
+			want: "CMD [/bin/bash]",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := stripDockerMetaFromCommand(tt.args.command); got != tt.want {
+				t.Errorf("stripDockerMetaFromCommand() = %v, want %v", got, tt.want)
 			}
 		})
 	}

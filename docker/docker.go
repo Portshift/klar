@@ -356,7 +356,7 @@ func FetchFsCommands(config *Config) ([]*FsLayerCommand, error) {
 			log.Infof("Skipping empty layer (%v): %+v", i, layerHistory)
 			continue
 		}
-		commands = append(commands, layerHistory.CreatedBy)
+		commands = append(commands, stripDockerMetaFromCommand(layerHistory.CreatedBy))
 
 	}
 	layers, err := img.Layers()
@@ -503,6 +503,13 @@ func getErrorFromStatusCode(code int) error {
 	}
 }
 
+// Strips Dockerfile generation info from layer commands. e.g: "/bin/sh -c #(nop) CMD [/bin/bash]" -> "CMD [/bin/bash]"
+func stripDockerMetaFromCommand(command string) string {
+	ret := strings.TrimSpace(strings.TrimPrefix(command, "/bin/sh -c #(nop)"))
+	ret = strings.TrimSpace(strings.TrimPrefix(ret, "/bin/sh -c"))
+	return ret
+}
+
 func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1) {
 	image.FsLayers = make([]FsLayer, len(schema1.FSLayers))
 	image.FsCommands = make([]*FsLayerCommand, len(schema1.FSLayers))
@@ -511,7 +518,7 @@ func extractV1LayersWithCommands(image *Image, schema1 *docker_manifest.Schema1)
 	for i := range schema1.FSLayers {
 		image.FsLayers[len(schema1.FSLayers)-1-i].BlobSum = schema1.FSLayers[i].BlobSum.String()
 		image.FsCommands[len(schema1.FSLayers)-1-i] = &FsLayerCommand{
-			Command: strings.Join(schema1.ExtractedV1Compatibility[i].ContainerConfig.Cmd, ","),
+			Command: stripDockerMetaFromCommand(strings.Join(schema1.ExtractedV1Compatibility[i].ContainerConfig.Cmd, " ")),
 			Layer:   schema1.FSLayers[i].BlobSum.Hex(),
 		}
 	}
