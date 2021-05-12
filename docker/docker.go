@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/Portshift/klar/types"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/Portshift/klar/types"
 
 	"github.com/Portshift/klar/docker/token"
 	"github.com/containers/image/v5/docker/reference"
@@ -28,17 +29,7 @@ import (
 
 	containerregistry_v1 "github.com/google/go-containerregistry/pkg/v1"
 
-	fanal_token "github.com/aquasecurity/fanal/image/token"
-	fanal_types "github.com/aquasecurity/fanal/types"
-
 	"github.com/Portshift/klar/utils"
-)
-
-const (
-	stateInitial = iota
-	stateName
-	statePort
-	stateTag
 )
 
 // Image represents Docker image
@@ -180,15 +171,10 @@ func NewImage(conf *Config) (*Image, error) {
 		imageName: conf.ImageName,
 	}
 
-	ref, err := reference.ParseNormalizedNamed(conf.ImageName)
+	ref, err := getImageRef(conf.ImageName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse image name. name=%v: %v", conf.ImageName, err)
+		return nil, fmt.Errorf("failed to get image ref. image name=%v: %v", conf.ImageName, err)
 	}
-
-	// strip tag if image has digest and tag
-	ref = ImageNameWithDigestOrTag(ref)
-	// add default tag "latest"
-	ref = reference.TagNameOnly(ref)
 
 	image.Registry = reference.Domain(ref)
 	// reference.ParseNormalizedNamed setting `defaultDomain`, we need `dockerHub` domain
@@ -207,6 +193,9 @@ func NewImage(conf *Config) (*Image, error) {
 		if image.user, image.password, err = credExtractor.GetCredentials(context.Background(), ref); err != nil {
 			return nil, fmt.Errorf("failed to get credentials. image name=%v: %v", conf.ImageName, err)
 		}
+		// update the config with the fetched credentials in case it will be needed again out of the Image scope
+		conf.User = image.user
+		conf.Password = image.password
 	}
 
 	if conf.InsecureRegistry {
@@ -225,6 +214,20 @@ func NewImage(conf *Config) (*Image, error) {
 	}
 
 	return image, nil
+}
+
+func getImageRef(imageName string) (reference.Named, error) {
+	ref, err := reference.ParseNormalizedNamed(imageName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse image name. name=%v: %v", imageName, err)
+	}
+
+	// strip tag if image has digest and tag
+	ref = ImageNameWithDigestOrTag(ref)
+	// add default tag "latest"
+	ref = reference.TagNameOnly(ref)
+
+	return ref, nil
 }
 
 // ImageNameWithDigestOrTag strips the tag from ambiguous image references that have a digest as well (e.g. `image:tag@sha256:123...`).
@@ -323,16 +326,7 @@ func FetchFsCommands(config *Config) ([]*FsLayerCommand, error) {
 		img = localImage
 	} else {
 		// Fetch from registry
-		ctx := context.Background()
-		opts := fanal_types.DockerOption{
-			Timeout:               90 * time.Second,
-			SkipPing:              true,
-			UserName:              config.User,
-			Password:              config.Password,
-			NonSSL:                config.InsecureRegistry,
-			InsecureSkipTLSVerify: config.InsecureTLS,
-		}
-		remoteImage, cleanup, err := newRemoteDockerImage(ctx, config.ImageName, opts)
+		remoteImage, cleanup, err := newRemoteDockerImage(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get remote image: %v", err)
 		}
@@ -388,34 +382,48 @@ func FetchFsCommands(config *Config) ([]*FsLayerCommand, error) {
 	return layerCommands, nil
 }
 
-func newRemoteDockerImage(ctx context.Context, imageName string, option fanal_types.DockerOption) (containerregistry_v1.Image, func(), error) {
+func newRemoteDockerImage(config *Config) (containerregistry_v1.Image, func(), error) {
 	var result error
 
 	var nameOpts []name.Option
-	if option.NonSSL {
+	if config.InsecureRegistry {
 		nameOpts = append(nameOpts, name.Insecure)
 	}
-	ref, err := name.ParseReference(imageName, nameOpts...)
+	user := config.User
+	password := config.Password
+	if user == "" || password == "" {
+		ref, err := getImageRef(config.ImageName)
+		if err != nil {
+			return nil, func() {}, fmt.Errorf("failed to get image ref. image name=%v: %v", config.ImageName, err)
+		}
+
+		credExtractor := token.CreateCredExtractor()
+		if user, password, err = credExtractor.GetCredentials(context.Background(), ref); err != nil {
+			return nil, func() {}, fmt.Errorf("failed to get credentials. image name=%v: %v", config.ImageName, err)
+		}
+
+	}
+	ref, err := name.ParseReference(config.ImageName, nameOpts...)
 	if err != nil {
 		return nil, func() {}, xerrors.Errorf("failed to parse the image name: %w", err)
 	}
 
 	// Try accessing Docker Registry
 	var remoteOpts []remote.Option
-	if option.InsecureSkipTLSVerify {
+	if config.InsecureTLS {
 		t := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 		remoteOpts = append(remoteOpts, remote.WithTransport(t))
 	}
 
-	domain := ref.Context().RegistryStr()
-	auth := fanal_token.GetToken(ctx, domain, option)
-
-	if auth.Username != "" && auth.Password != "" {
-		remoteOpts = append(remoteOpts, remote.WithAuth(&auth))
-	} else if option.RegistryToken != "" {
-		bearer := authn.Bearer{Token: option.RegistryToken}
+	if user != "" && password != "" {
+		remoteOpts = append(remoteOpts, remote.WithAuth(&authn.Basic{
+			Username: user,
+			Password: password,
+		}))
+	} else if config.Token != "" {
+		bearer := authn.Bearer{Token: config.Token}
 		remoteOpts = append(remoteOpts, remote.WithAuth(&bearer))
 	} else {
 		remoteOpts = append(remoteOpts, remote.WithAuthFromKeychain(authn.DefaultKeychain))
