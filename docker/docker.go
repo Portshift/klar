@@ -193,6 +193,9 @@ func NewImage(conf *Config) (*Image, error) {
 		if image.user, image.password, err = credExtractor.GetCredentials(context.Background(), ref); err != nil {
 			return nil, fmt.Errorf("failed to get credentials. image name=%v: %v", conf.ImageName, err)
 		}
+		// update the config with the fetched credentials in case it will be needed again out of the Image scope
+		conf.User = image.user
+		conf.Password = image.password
 	}
 
 	if conf.InsecureRegistry {
