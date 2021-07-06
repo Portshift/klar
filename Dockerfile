@@ -30,3 +30,5 @@ LABEL name="klar" \
       release=${IMAGE_VERSION} \
       summary="Integration of Clair and Docker Registry" \
       description="Simple tool to analyze images stored in a private or public Docker registry for security vulnerabilities using Clair"
+
+USER 1000
