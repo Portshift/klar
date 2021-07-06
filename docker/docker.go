@@ -471,7 +471,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		}
 		image.Digest = imageV2.Config.Digest
 		image.schemaVersion = imageV2.SchemaVersion
-	case "application/vnd.docker.distribution.manifest.v1+prettyjws":
+	case "application/vnd.docker.distribution.manifest.v1+prettyjws", "application/vnd.oci.image.manifest.v1+json":
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("failed to read response body: %v", err)
@@ -614,7 +614,7 @@ func (i *Image) pullReq() (*http.Response, error) {
 	}
 
 	// Prefer manifest schema v2
-	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.v1+prettyjws, application/vnd.docker.distribution.manifest.list.v2+json")
+	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.v1+prettyjws, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json")
 	utils.DumpRequest(req)
 	resp, err := i.client.Do(req)
 	if err != nil {
