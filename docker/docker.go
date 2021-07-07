@@ -459,7 +459,7 @@ func newLocalDockerImage(config *Config) (containerregistry_v1.Image, error) {
 
 func parseImageResponse(resp *http.Response, image *Image) error {
 	switch contentType := resp.Header.Get("Content-Type"); contentType {
-	case "application/vnd.docker.distribution.manifest.v2+json":
+	case "application/vnd.docker.distribution.manifest.v2+json", "application/vnd.oci.image.manifest.v1+json":
 		var imageV2 imageV2
 		if err := json.NewDecoder(resp.Body).Decode(&imageV2); err != nil {
 			fmt.Fprintln(os.Stderr, "Image V2 decode error")
@@ -471,7 +471,7 @@ func parseImageResponse(resp *http.Response, image *Image) error {
 		}
 		image.Digest = imageV2.Config.Digest
 		image.schemaVersion = imageV2.SchemaVersion
-	case "application/vnd.docker.distribution.manifest.v1+prettyjws", "application/vnd.oci.image.manifest.v1+json":
+	case "application/vnd.docker.distribution.manifest.v1+prettyjws":
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("failed to read response body: %v", err)
