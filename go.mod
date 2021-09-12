@@ -4,16 +4,21 @@ go 1.13
 
 require (
 	github.com/GoogleCloudPlatform/docker-credential-gcr v1.5.0
-	github.com/aquasecurity/fanal v0.0.0-20201028122920-48a25d865182
-	github.com/aws/aws-sdk-go v1.27.1
+	github.com/aws/aws-sdk-go v1.28.2
+	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/containers/image/v5 v5.4.4
-	github.com/golang/mock v1.2.0
+	github.com/golang/mock v1.3.1
+	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/google/go-containerregistry v0.0.0-20200331213917-3d03ed9b1ca2
 	github.com/hashicorp/go-multierror v1.1.0
+	github.com/kr/text v0.2.0 // indirect
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/sirupsen/logrus v1.6.0
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+	google.golang.org/grpc v1.28.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	k8s.io/api v0.17.4
-	k8s.io/kubernetes v1.17.3
+	k8s.io/kubernetes v1.18.19
 )
 
 replace (
