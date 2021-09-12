@@ -459,7 +459,7 @@ func newLocalDockerImage(config *Config) (containerregistry_v1.Image, error) {
 
 func parseImageResponse(resp *http.Response, image *Image) error {
 	switch contentType := resp.Header.Get("Content-Type"); contentType {
-	case "application/vnd.docker.distribution.manifest.v2+json":
+	case "application/vnd.docker.distribution.manifest.v2+json", "application/vnd.oci.image.manifest.v1+json":
 		var imageV2 imageV2
 		if err := json.NewDecoder(resp.Body).Decode(&imageV2); err != nil {
 			fmt.Fprintln(os.Stderr, "Image V2 decode error")
@@ -614,7 +614,7 @@ func (i *Image) pullReq() (*http.Response, error) {
 	}
 
 	// Prefer manifest schema v2
-	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.v1+prettyjws, application/vnd.docker.distribution.manifest.list.v2+json")
+	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.v1+prettyjws, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json")
 	utils.DumpRequest(req)
 	resp, err := i.client.Do(req)
 	if err != nil {
