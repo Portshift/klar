@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/Portshift/klar/config"
-	"github.com/Portshift/klar/format"
 	"github.com/Portshift/klar/run"
 	"github.com/Portshift/klar/types"
 
@@ -51,7 +50,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	vulnerabilities, commands, err := run.ExecuteScan(conf)
+	vulnerabilities, commands, err := run.ExecuteScanGrype(imageName, conf)
 	if err != nil {
 		errMsg := fmt.Errorf("failed to execute scan: %w", err)
 		log.Error(errMsg)
@@ -59,16 +58,20 @@ func main() {
 		exit(2, conf, result)
 	}
 
-	result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, vulnerabilities)
+	//result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, vulnerabilities)
+	// TODO: filter ignored severity and below
+	result.Vulnerabilities = vulnerabilities
 	result.LayerCommands = commands
 	result.Success = true
 
-	log.Infof("Found %d vulnerabilities", len(vulnerabilities))
-	vsNumber := format.PrintVulnerabilities(conf, vulnerabilities)
+	log.Infof("Found %d vulnerabilities", len(vulnerabilities.Matches))
+	//vsNumber := format.PrintVulnerabilities(conf, vulnerabilities)
+	// TBD: formatted result print
 
-	if conf.Threshold != 0 && vsNumber > conf.Threshold {
-		exit(1, conf, result)
-	}
+	//if conf.Threshold != 0 && vsNumber > conf.Threshold {
+	//	exit(1, conf, result)
+	//}
+	// TBD: limit the number of matcher
 
 	if err := forwarding.SendScanResults(conf.ResultServicePath, result); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)

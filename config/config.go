@@ -19,6 +19,7 @@ type vulnerabilitiesWhitelistYAML struct {
 const (
 	OptionClairOutput        = "CLAIR_OUTPUT"
 	OptionClairAddress       = "CLAIR_ADDR"
+	OptionGrypeAddress       = "GRYPE_ADDR"
 	OptionKlarTrace          = "KLAR_TRACE"
 	OptionClairThreshold     = "CLAIR_THRESHOLD"
 	OptionClairTimeout       = "CLAIR_TIMEOUT"
@@ -79,6 +80,7 @@ func parseBoolOption(key string) bool {
 
 type Config struct {
 	ClairAddr         string
+	GrypeAddr         string
 	ClairOutput       string
 	Threshold         int
 	JSONOutput        bool
@@ -92,8 +94,10 @@ type Config struct {
 
 func NewConfig(imageName string) (*Config, error) {
 	clairAddr := os.Getenv(OptionClairAddress)
-	if clairAddr == "" {
-		return nil, fmt.Errorf("clair address must be provided")
+
+	grypeAddr := os.Getenv(OptionGrypeAddress)
+	if grypeAddr == "" {
+		return nil, fmt.Errorf("grype address must be provided")
 	}
 
 	utils.Trace = os.Getenv(OptionKlarTrace) == "true"
@@ -116,6 +120,7 @@ func NewConfig(imageName string) (*Config, error) {
 	return &Config{
 		ResultServicePath: os.Getenv(OptionResultServicePath),
 		ClairAddr:         clairAddr,
+		GrypeAddr:         grypeAddr,
 		ClairOutput:       clairOutput,
 		Threshold:         parseIntOption(OptionClairThreshold),
 		JSONOutput:        false,

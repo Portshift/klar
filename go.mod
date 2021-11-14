@@ -1,26 +1,43 @@
 module github.com/Portshift/klar
 
-go 1.13
+go 1.16
 
 require (
 	github.com/GoogleCloudPlatform/docker-credential-gcr v1.5.0
-	github.com/aquasecurity/fanal v0.0.0-20201028122920-48a25d865182
-	github.com/aws/aws-sdk-go v1.27.1
+	github.com/anchore/grype v0.24.0
+	github.com/anchore/stereoscope v0.0.0-20211024152658-003132a67c10
+	github.com/anchore/syft v0.24.1
+	github.com/aws/aws-sdk-go v1.34.28
 	github.com/containers/image/v5 v5.4.4
-	github.com/golang/mock v1.2.0
-	github.com/google/go-containerregistry v0.0.0-20200331213917-3d03ed9b1ca2
+	github.com/go-openapi/runtime v0.21.0
+	github.com/go-openapi/strfmt v0.21.0
+	github.com/golang/mock v1.4.3
+	github.com/google/go-containerregistry v0.1.1
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	k8s.io/api v0.17.4
 	k8s.io/kubernetes v1.17.3
+	wwwin-github.cisco.com/eti/grype-server/api v0.0.0
 )
+
+replace github.com/anchore/grype v0.24.0 => /Users/alexeik/go/src/github.com/anchore/grype
+
+replace github.com/anchore/syft v0.24.1 => /Users/alexeik/go/src/github.com/anchore/syft
+
+replace wwwin-github.cisco.com/eti/grype-server/api v0.0.0 => /Users/alexeik/go/src/wwwin-github.cisco.com/eti/grype-server/api
 
 replace (
 	k8s.io/api => k8s.io/api v0.0.0-20191114100352-16d7abae0d2a
 	k8s.io/apimachinery => k8s.io/apimachinery v0.16.5-beta.1
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191114101535-6c5935290e33
 )
+
+//// version = "0.16.0"
+//replace (
+//	github.com/go-openapi/runtime => github.com/go-openapi/runtime v0.0.0-20180628220156-9a3091f566c0
+//	github.com/go-openapi/strfmt => github.com/go-openapi/strfmt v0.0.0-20180703152050-913ee058e387
+//)
 
 replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191114105449-027877536833
 

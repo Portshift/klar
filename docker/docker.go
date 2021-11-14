@@ -363,13 +363,13 @@ func FetchFsCommands(config *Config) ([]*FsLayerCommand, error) {
 
 	var layerCommands []*FsLayerCommand
 	for i, layer := range layers {
-		layerDigest, err := layer.Digest()
+		layerDiffID, err := layer.DiffID()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get layer digest: %v", err)
+			return nil, fmt.Errorf("failed to get layer diffID: %v", err)
 		}
 		layerCommands = append(layerCommands, &FsLayerCommand{
 			Command: commands[i],
-			Layer:   layerDigest.Hex,
+			Layer:   layerDiffID.Hex,
 		})
 	}
 

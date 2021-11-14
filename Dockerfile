@@ -1,6 +1,8 @@
 FROM golang:1.14.4-alpine AS builder
 WORKDIR /go/src/github.com/Portshift/klar/
 COPY ./ ./
+RUN mkdir -p /Users/alexeik/go/src/github.com/
+COPY /Users/alexeik/go/src/github.com/anchore/ /Users/alexeik/go/src/github.com/anchore/
 RUN CGO_ENABLED=0 go build -o klar .
 
 FROM registry.access.redhat.com/ubi8
