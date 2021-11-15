@@ -1,6 +1,6 @@
 module github.com/Portshift/klar
 
-go 1.13
+go 1.16
 
 require (
 	github.com/GoogleCloudPlatform/docker-credential-gcr v1.5.0
