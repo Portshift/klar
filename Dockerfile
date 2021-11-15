@@ -1,4 +1,4 @@
-FROM golang:1.14.4-alpine AS builder
+FROM golang:1.16-alpine AS builder
 WORKDIR /go/src/github.com/Portshift/klar/
 COPY ./ ./
 RUN mkdir -p /Users/alexeik/go/src/github.com/
