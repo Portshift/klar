@@ -4,6 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/anchore/grype/grype"
+	grype_db "github.com/anchore/grype/grype/db"
+	grype_pkg "github.com/anchore/grype/grype/pkg"
+	grype_models "github.com/anchore/grype/grype/presenter/models"
 
 	grype_client "github.com/Portshift/grype-server/api/client/client"
 	grype_client_operations "github.com/Portshift/grype-server/api/client/client/operations"
@@ -11,7 +15,6 @@ import (
 	"github.com/Portshift/klar/clair"
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/docker"
-	grype_models "github.com/anchore/grype/grype/presenter/models"
 	anchore_image "github.com/anchore/stereoscope/pkg/image"
 	"github.com/anchore/syft/syft"
 	"github.com/anchore/syft/syft/format"
@@ -21,7 +24,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ExecuteScanGrype(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
+func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
 	src, cleanup, err := source.New(imageName, &anchore_image.RegistryOptions{
 		InsecureSkipTLSVerify: conf.DockerConfig.InsecureTLS,
 		InsecureUseHTTP:       conf.DockerConfig.InsecureRegistry,
@@ -66,6 +69,52 @@ func ExecuteScanGrype(imageName string, conf *config.Config) (*grype_models.Docu
 	err = json.Unmarshal(docB, &doc)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshall vulnerabilities document: %v", err)
+	}
+
+	commands, err := GetImageCommands(conf)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
+	}
+
+	return &doc, commands, nil
+}
+
+func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
+	dbConfig := grype_db.Config{
+		DBRootDir:          "/tmp/",
+		ListingURL:         "https://toolbox-data.anchore.io/grype/databases/listing.json",
+		ValidateByHashOnGet: false,
+	}
+	provider, metadataProvider, dbStatus, err := grype.LoadVulnerabilityDB(dbConfig, true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load vulnerability DB: %w", err)
+	}
+	if dbStatus == nil {
+		return nil, nil, fmt.Errorf("unable to determine DB status")
+	}
+
+	registryOptions := &anchore_image.RegistryOptions{
+		InsecureSkipTLSVerify: conf.DockerConfig.InsecureTLS,
+		InsecureUseHTTP:       conf.DockerConfig.InsecureRegistry,
+		Credentials: []anchore_image.RegistryCredentials{
+			{
+				Authority: "", // What is this?
+				Username:  conf.DockerConfig.User,
+				Password:  conf.DockerConfig.Password,
+				Token:     conf.DockerConfig.Token,
+			},
+		},
+	}
+	packages, context, err := grype_pkg.Provide(imageName, source.SquashedScope, registryOptions)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to analyze packages: %v", err)
+	}
+
+	allMatches := grype.FindVulnerabilitiesForPackage(provider, context.Distro, packages...)
+
+	doc, err := grype_models.NewDocument(packages, context, allMatches, nil, metadataProvider, nil, dbStatus)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create document: %v", err)
 	}
 
 	commands, err := GetImageCommands(conf)

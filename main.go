@@ -50,7 +50,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	vulnerabilities, commands, err := run.ExecuteScanGrype(imageName, conf)
+	vulnerabilities, commands, err := run.ExecuteRemoteGrypeScan(imageName, conf)
 	if err != nil {
 		errMsg := fmt.Errorf("failed to execute scan: %w", err)
 		log.Error(errMsg)
