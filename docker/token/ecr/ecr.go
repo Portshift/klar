@@ -13,7 +13,7 @@ import (
 
 const ecrURL = "amazonaws.com"
 
-type ECR struct {}
+type ECR struct{}
 
 func (e *ECR) Name() string {
 	return "ecr"

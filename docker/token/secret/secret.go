@@ -31,8 +31,8 @@ func (s *ImagePullSecret) GetCredentials(_ context.Context, named reference.Name
 
 	secretDataMap[corev1.DockerConfigJsonKey] = []byte(s.body)
 	secrets := []corev1.Secret{{
-		Data:       secretDataMap,
-		Type:       corev1.SecretTypeDockerConfigJson,
+		Data: secretDataMap,
+		Type: corev1.SecretTypeDockerConfigJson,
 	}}
 
 	dockerKeyring, err := credprovsecrets.MakeDockerKeyring(secrets, credentialprovider.NewDockerKeyring())

@@ -20,10 +20,10 @@ func Test_filterVulnerabilities1(t *testing.T) {
 		{
 			name: "below threshold",
 			args: args{
-				severityThresholdStr:       vulutils.MediumVulnerability,
+				severityThresholdStr: vulutils.MediumVulnerability,
 				vulnerabilities: []*clair.Vulnerability{
 					{
-						Severity:       vulutils.LowVulnerability,
+						Severity: vulutils.LowVulnerability,
 					},
 				},
 			},
@@ -32,10 +32,10 @@ func Test_filterVulnerabilities1(t *testing.T) {
 		{
 			name: "exact threshold",
 			args: args{
-				severityThresholdStr:       vulutils.MediumVulnerability,
+				severityThresholdStr: vulutils.MediumVulnerability,
 				vulnerabilities: []*clair.Vulnerability{
 					{
-						Severity:       vulutils.MediumVulnerability,
+						Severity: vulutils.MediumVulnerability,
 					},
 				},
 			},
@@ -48,10 +48,10 @@ func Test_filterVulnerabilities1(t *testing.T) {
 		{
 			name: "above threshold",
 			args: args{
-				severityThresholdStr:       vulutils.MediumVulnerability,
+				severityThresholdStr: vulutils.MediumVulnerability,
 				vulnerabilities: []*clair.Vulnerability{
 					{
-						Severity:       vulutils.HighVulnerability,
+						Severity: vulutils.HighVulnerability,
 					},
 				},
 			},
@@ -64,25 +64,25 @@ func Test_filterVulnerabilities1(t *testing.T) {
 		{
 			name: "mix",
 			args: args{
-				severityThresholdStr:       vulutils.MediumVulnerability,
+				severityThresholdStr: vulutils.MediumVulnerability,
 				vulnerabilities: []*clair.Vulnerability{
 					{
-						Severity:       vulutils.LowVulnerability,
+						Severity: vulutils.LowVulnerability,
 					},
 					{
-						Severity:       vulutils.MediumVulnerability,
+						Severity: vulutils.MediumVulnerability,
 					},
 					{
-						Severity:       vulutils.HighVulnerability,
+						Severity: vulutils.HighVulnerability,
 					},
 				},
 			},
 			want: []*clair.Vulnerability{
 				{
-					Severity:       vulutils.MediumVulnerability,
+					Severity: vulutils.MediumVulnerability,
 				},
 				{
-					Severity:       vulutils.HighVulnerability,
+					Severity: vulutils.HighVulnerability,
 				},
 			},
 		},

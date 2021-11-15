@@ -192,7 +192,7 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 					FsCommands: make([]*FsLayerCommand, 0),
 				},
 				schema1: &docker_manifest.Schema1{
-					FSLayers:                 []docker_manifest.Schema1FSLayers{
+					FSLayers: []docker_manifest.Schema1FSLayers{
 						{
 							BlobSum: "sha256:bbb",
 						},
@@ -207,7 +207,7 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 				},
 			},
 			want: &Image{
-				FsLayers:   []FsLayer{
+				FsLayers: []FsLayer{
 					{
 						BlobSum: "sha256:aaa",
 					},
@@ -235,7 +235,7 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 					FsCommands: make([]*FsLayerCommand, 0),
 				},
 				schema1: &docker_manifest.Schema1{
-					FSLayers:                 []docker_manifest.Schema1FSLayers{
+					FSLayers: []docker_manifest.Schema1FSLayers{
 						{
 							BlobSum: "sha256:aaa",
 						},
@@ -246,7 +246,7 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 				},
 			},
 			want: &Image{
-				FsLayers:   []FsLayer{
+				FsLayers: []FsLayer{
 					{
 						BlobSum: "sha256:aaa",
 					},
@@ -267,7 +267,7 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 					FsCommands: make([]*FsLayerCommand, 0),
 				},
 				schema1: &docker_manifest.Schema1{
-					FSLayers:                 []docker_manifest.Schema1FSLayers{
+					FSLayers: []docker_manifest.Schema1FSLayers{
 						{
 							BlobSum: "sha256:aaa",
 						},
@@ -278,7 +278,7 @@ func Test_extractV1LayersWithCommands(t *testing.T) {
 				},
 			},
 			want: &Image{
-				FsLayers:   []FsLayer{
+				FsLayers: []FsLayer{
 					{
 						BlobSum: "sha256:aaa",
 					},

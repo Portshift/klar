@@ -22,7 +22,7 @@ type Extractor interface {
 	GetCredentials(ctx context.Context, named reference.Named) (username, password string, err error)
 }
 
-func CreateCredExtractor() *CredExtractor{
+func CreateCredExtractor() *CredExtractor {
 	return &CredExtractor{
 		extractors: []Extractor{
 			// Note: ImagePullSecret must be first

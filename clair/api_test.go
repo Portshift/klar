@@ -61,53 +61,53 @@ func Test_apiV1_sendWithRetries(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		expect func(client *MockHTTPClient)
+		expect  func(client *MockHTTPClient)
 		want    *http.Response
 		wantErr bool
 	}{
 		{
-			name:    "success on first try",
-			fields:  fields{
+			name: "success on first try",
+			fields: fields{
 				client: mockHTTPClient,
 			},
-			args:    args{
+			args: args{
 				request: nil,
 			},
 			expect: func(client *MockHTTPClient) {
 				client.EXPECT().Do(gomock.Any()).Return(&http.Response{
-					Status:           "ok",
+					Status: "ok",
 				}, nil)
 			},
-			want:    &http.Response{
+			want: &http.Response{
 				Status: "ok",
 			},
 			wantErr: false,
 		},
 		{
-			name:    "success on second try",
-			fields:  fields{
+			name: "success on second try",
+			fields: fields{
 				client: mockHTTPClient,
 			},
-			args:    args{
+			args: args{
 				request: nil,
 			},
 			expect: func(client *MockHTTPClient) {
 				client.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("fail"))
 				client.EXPECT().Do(gomock.Any()).Return(&http.Response{
-					Status:           "ok",
+					Status: "ok",
 				}, nil)
 			},
-			want:    &http.Response{
+			want: &http.Response{
 				Status: "ok",
 			},
 			wantErr: false,
 		},
 		{
-			name:    "fail after max retries",
-			fields:  fields{
+			name: "fail after max retries",
+			fields: fields{
 				client: mockHTTPClient,
 			},
-			args:    args{
+			args: args{
 				request: nil,
 			},
 			expect: func(client *MockHTTPClient) {

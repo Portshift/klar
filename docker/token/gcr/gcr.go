@@ -12,7 +12,7 @@ import (
 
 const gcrURL = "gcr.io"
 
-type GCR struct {}
+type GCR struct{}
 
 func (g *GCR) Name() string {
 	return "gcr"

@@ -107,4 +107,3 @@ func TestImagePullSecret_GetCredentials(t *testing.T) {
 		})
 	}
 }
-

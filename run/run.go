@@ -1,10 +1,13 @@
 package run
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
+	grype_client "github.com/Portshift/grype-server/api/client/client"
+	grype_client_operations "github.com/Portshift/grype-server/api/client/client/operations"
+	"github.com/Portshift/grype-server/api/client/models"
 	"github.com/Portshift/klar/clair"
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/docker"
@@ -12,15 +15,10 @@ import (
 	anchore_image "github.com/anchore/stereoscope/pkg/image"
 	"github.com/anchore/syft/syft"
 	"github.com/anchore/syft/syft/format"
-	"github.com/anchore/syft/syft/formats"
-	"github.com/anchore/syft/syft/sbom"
 	"github.com/anchore/syft/syft/source"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
-	grype_client "wwwin-github.cisco.com/eti/grype-server/api/client/client"
-	grype_client_operations "wwwin-github.cisco.com/eti/grype-server/api/client/client/operations"
-	"wwwin-github.cisco.com/eti/grype-server/api/client/models"
 )
 
 func ExecuteScanGrype(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
@@ -41,34 +39,16 @@ func ExecuteScanGrype(imageName string, conf *config.Config) (*grype_models.Docu
 	}
 	defer cleanup()
 
-
-	catalog, d, err := syft.CatalogPackages(src, source.SquashedScope)
+	catalog, distro, err := syft.CatalogPackages(src, source.SquashedScope)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to catalog packages: %v", err)
 	}
-
-	sbomResult := sbom.SBOM{
-		Artifacts: sbom.Artifacts{
-			PackageCatalog: catalog,
-			Distro:         d,
-		},
-		Source: src.Metadata,
-	}
-
-	f := formats.ByOption(format.JSONOption)
-	if f == nil {
-		return nil, nil, fmt.Errorf("unknown format: %v", format.JSONOption)
-	}
-	presenter := f.Presenter(sbomResult)
-	if presenter == nil {
-		return nil, nil, fmt.Errorf("failed to create presenter")
-	}
-	sbomBuf := new(bytes.Buffer)
-	err = presenter.Present(sbomBuf)
+	sbomEncoded, err := syft.Encode(catalog, &src.Metadata, distro, source.SquashedScope, format.JSONOption)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to present sbom: %v", err)
+		return nil, nil, fmt.Errorf("failed to encode sbom: %v", err)
 	}
-	sbom64 := base64.StdEncoding.EncodeToString([]byte(sbomBuf.String()))
+
+	sbom64 := base64.StdEncoding.EncodeToString(sbomEncoded)
 
 	client := createGrypeClient(conf.GrypeAddr)
 	params := grype_client_operations.NewPostScanSBOMParams().WithBody(&models.SBOM{
