@@ -4,9 +4,9 @@ import (
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/run"
 	"github.com/Portshift/klar/types"
+	grype_models "github.com/anchore/grype/grype/presenter/models"
 
 	"fmt"
-	"github.com/Portshift/klar/clair"
 	"github.com/Portshift/klar/forwarding"
 	vulutils "github.com/Portshift/klar/utils/vulnerability"
 	log "github.com/sirupsen/logrus"
@@ -58,20 +58,12 @@ func main() {
 		exit(2, conf, result)
 	}
 
-	//result.Vulnerabilities = filterVulnerabilities(conf.ClairOutput, vulnerabilities)
-	// TODO: filter ignored severity and below
+	result.Vulnerabilities = filterVulnerabilities(conf.SeverityThreshold, vulnerabilities)
 	result.Vulnerabilities = vulnerabilities
 	result.LayerCommands = commands
 	result.Success = true
 
 	log.Infof("Found %d vulnerabilities", len(vulnerabilities.Matches))
-	//vsNumber := format.PrintVulnerabilities(conf, vulnerabilities)
-	// TBD: formatted result print
-
-	//if conf.Threshold != 0 && vsNumber > conf.Threshold {
-	//	exit(1, conf, result)
-	//}
-	// TBD: limit the number of matcher
 
 	if err := forwarding.SendScanResults(conf.ResultServicePath, result); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)
@@ -84,18 +76,20 @@ func initLogs() {
 	}
 }
 
-func filterVulnerabilities(severityThresholdStr string, vulnerabilities []*clair.Vulnerability) []*clair.Vulnerability {
-	var ret []*clair.Vulnerability
+func filterVulnerabilities(severityThresholdStr string, vulnerabilities *grype_models.Document) *grype_models.Document{
+	var filtered []grype_models.Match
 
 	severityThreshold := vulutils.GetSeverityFromString(severityThresholdStr)
-	for _, vulnerability := range vulnerabilities {
-		if vulutils.GetSeverityFromString(vulnerability.Severity) < severityThreshold {
+	for _, vulnerability := range vulnerabilities.Matches {
+		if vulutils.GetSeverityFromString(vulnerability.Vulnerability.Severity) < severityThreshold {
 			log.Debugf("Vulnerability severity below threshold. vulnerability=%+v, threshold=%+v", vulnerability,
 				severityThresholdStr)
 			continue
 		}
-		ret = append(ret, vulnerability)
+		filtered = append(filtered, vulnerability)
 	}
 
-	return ret
+	vulnerabilities.Matches = filtered
+
+	return vulnerabilities
 }

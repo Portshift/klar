@@ -28,8 +28,8 @@ func TestParseIntOption(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		os.Setenv(OptionClairThreshold, tc.value)
-		if got := parseIntOption(OptionClairThreshold); got != tc.expected {
+		os.Setenv(OptionSeverityThreshold, tc.value)
+		if got := parseIntOption(OptionSeverityThreshold); got != tc.expected {
 			t.Errorf("expected %d got %d", tc.expected, got)
 		}
 	}
@@ -65,34 +65,74 @@ func TestParseBoolOption(t *testing.T) {
 	}
 }
 
-func TestParseOutputPriority(t *testing.T) {
-	cases := []struct {
-		priority   string
-		expected   string
-		shouldFail bool
+func Test_validateThresholdSeverity(t *testing.T) {
+	type args struct {
+		severity string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
 	}{
 		{
-			priority: Priorities[1],
-			expected: Priorities[1],
+			name:    "Unknown",
+			args:    args{
+				severity: "Unknown",
+			},
+			wantErr: false,
 		},
 		{
-			priority: "",
-			expected: Priorities[0],
+			name:    "Negligible",
+			args:    args{
+				severity: "Negligible",
+			},
+			wantErr: false,
 		},
 		{
-			priority:   "xxx",
-			shouldFail: true,
+			name:    "Low",
+			args:    args{
+				severity: "Low",
+			},
+			wantErr: false,
 		},
-	}
+		{
+			name:    "Medium",
+			args:    args{
+				severity: "Medium",
+			},
+			wantErr: false,
+		},{
+			name:    "High",
+			args:    args{
+				severity: "High",
+			},
+			wantErr: false,
+		},{
+			name:    "Critical",
+			args:    args{
+				severity: "Critical",
+			},
+			wantErr: false,
+		},{
+			name:    "Defcon1",
+			args:    args{
+				severity: "Defcon1",
+			},
+			wantErr: false,
+		},{
+			name:    "Invalid",
+			args:    args{
+				severity: "Invalid",
+			},
+			wantErr: true,
+		},
 
-	for _, tc := range cases {
-		os.Setenv(OptionClairOutput, tc.priority)
-		p, err := parseOutputPriority()
-		if (err != nil) != tc.shouldFail {
-			t.Fatalf("expected error: %v, got: %v", tc.expected, err)
-		}
-		if p != tc.expected {
-			t.Fatalf("expected output priority %s, got %s", tc.expected, p)
-		}
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateThresholdSeverity(tt.args.severity); (err != nil) != tt.wantErr {
+				t.Errorf("validateThresholdSeverity() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

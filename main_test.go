@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/Portshift/klar/clair"
 	vulutils "github.com/Portshift/klar/utils/vulnerability"
+	grype_models "github.com/anchore/grype/grype/presenter/models"
 	"reflect"
 	"testing"
 )
@@ -10,38 +10,58 @@ import (
 func Test_filterVulnerabilities1(t *testing.T) {
 	type args struct {
 		severityThresholdStr string
-		vulnerabilities      []*clair.Vulnerability
+		vulnerabilities      *grype_models.Document
 	}
 	tests := []struct {
 		name string
 		args args
-		want []*clair.Vulnerability
+		want *grype_models.Document
 	}{
 		{
 			name: "below threshold",
 			args: args{
 				severityThresholdStr: vulutils.MediumVulnerability,
-				vulnerabilities: []*clair.Vulnerability{
-					{
-						Severity: vulutils.LowVulnerability,
+				vulnerabilities: &grype_models.Document{
+					Matches: []grype_models.Match{
+						{
+							Vulnerability: grype_models.Vulnerability{
+								VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+									Severity: vulutils.LowVulnerability,
+								},
+							},
+						},
 					},
 				},
 			},
-			want: nil,
+			want: &grype_models.Document{
+				Matches: nil,
+			},
 		},
 		{
 			name: "exact threshold",
 			args: args{
 				severityThresholdStr: vulutils.MediumVulnerability,
-				vulnerabilities: []*clair.Vulnerability{
-					{
-						Severity: vulutils.MediumVulnerability,
+				vulnerabilities: &grype_models.Document{
+					Matches: []grype_models.Match{
+						{
+							Vulnerability: grype_models.Vulnerability{
+								VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+									Severity: vulutils.MediumVulnerability,
+								},
+							},
+						},
 					},
 				},
 			},
-			want: []*clair.Vulnerability{
-				{
-					Severity: vulutils.MediumVulnerability,
+			want: &grype_models.Document{
+				Matches: []grype_models.Match{
+					{
+						Vulnerability: grype_models.Vulnerability{
+							VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+								Severity: vulutils.MediumVulnerability,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -49,15 +69,27 @@ func Test_filterVulnerabilities1(t *testing.T) {
 			name: "above threshold",
 			args: args{
 				severityThresholdStr: vulutils.MediumVulnerability,
-				vulnerabilities: []*clair.Vulnerability{
-					{
-						Severity: vulutils.HighVulnerability,
+				vulnerabilities: &grype_models.Document{
+					Matches: []grype_models.Match{
+						{
+							Vulnerability: grype_models.Vulnerability{
+								VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+									Severity: vulutils.HighVulnerability,
+								},
+							},
+						},
 					},
 				},
 			},
-			want: []*clair.Vulnerability{
-				{
-					Severity: vulutils.HighVulnerability,
+			want: &grype_models.Document{
+				Matches: []grype_models.Match{
+					{
+						Vulnerability: grype_models.Vulnerability{
+							VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+								Severity: vulutils.HighVulnerability,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -65,24 +97,48 @@ func Test_filterVulnerabilities1(t *testing.T) {
 			name: "mix",
 			args: args{
 				severityThresholdStr: vulutils.MediumVulnerability,
-				vulnerabilities: []*clair.Vulnerability{
-					{
-						Severity: vulutils.LowVulnerability,
-					},
-					{
-						Severity: vulutils.MediumVulnerability,
-					},
-					{
-						Severity: vulutils.HighVulnerability,
+				vulnerabilities: &grype_models.Document{
+					Matches: []grype_models.Match{
+						{
+							Vulnerability: grype_models.Vulnerability{
+								VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+									Severity: vulutils.HighVulnerability,
+								},
+							},
+						},
+						{
+							Vulnerability: grype_models.Vulnerability{
+								VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+									Severity: vulutils.MediumVulnerability,
+								},
+							},
+						},
+						{
+							Vulnerability: grype_models.Vulnerability{
+								VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+									Severity: vulutils.LowVulnerability,
+								},
+							},
+						},
 					},
 				},
 			},
-			want: []*clair.Vulnerability{
-				{
-					Severity: vulutils.MediumVulnerability,
-				},
-				{
-					Severity: vulutils.HighVulnerability,
+			want: &grype_models.Document{
+				Matches: []grype_models.Match{
+					{
+						Vulnerability: grype_models.Vulnerability{
+							VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+								Severity: vulutils.HighVulnerability,
+							},
+						},
+					},
+					{
+						Vulnerability: grype_models.Vulnerability{
+							VulnerabilityMetadata: grype_models.VulnerabilityMetadata{
+								Severity: vulutils.MediumVulnerability,
+							},
+						},
+					},
 				},
 			},
 		},

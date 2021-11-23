@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
 	"github.com/anchore/grype/grype"
 	grype_db "github.com/anchore/grype/grype/db"
 	grype_pkg "github.com/anchore/grype/grype/pkg"
@@ -12,7 +13,6 @@ import (
 	grype_client "github.com/Portshift/grype-server/api/client/client"
 	grype_client_operations "github.com/Portshift/grype-server/api/client/client/operations"
 	"github.com/Portshift/grype-server/api/client/models"
-	"github.com/Portshift/klar/clair"
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/docker"
 	anchore_image "github.com/anchore/stereoscope/pkg/image"
@@ -21,7 +21,6 @@ import (
 	"github.com/anchore/syft/syft/source"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
 )
 
 func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
@@ -81,8 +80,8 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 
 func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
 	dbConfig := grype_db.Config{
-		DBRootDir:          "/tmp/",
-		ListingURL:         "https://toolbox-data.anchore.io/grype/databases/listing.json",
+		DBRootDir:           "/tmp/",
+		ListingURL:          "https://toolbox-data.anchore.io/grype/databases/listing.json",
 		ValidateByHashOnGet: false,
 	}
 	provider, metadataProvider, dbStatus, err := grype.LoadVulnerabilityDB(dbConfig, true)
@@ -130,44 +129,6 @@ func createGrypeClient(serverAddress string) *grype_client.GrypeServer {
 	cfg.WithHost(serverAddress)
 	transport := httptransport.New(cfg.Host, cfg.BasePath, cfg.Schemes)
 	return grype_client.New(transport, strfmt.Default)
-}
-
-func ExecuteScan(conf *config.Config) ([]*clair.Vulnerability, []*docker.FsLayerCommand, error) {
-	image, err := docker.NewImage(&conf.DockerConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse name: %v", err)
-	}
-
-	err = image.Pull()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to pull image: %w", err)
-	}
-
-	if err := image.FetchFsCommands(&conf.DockerConfig); err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch layer commands: %v", err)
-	}
-
-	if len(image.FsLayers) == 0 {
-		return nil, nil, fmt.Errorf("failed to pull pull fsLayers")
-	}
-
-	commands := image.GetFsCommands()
-
-	log.Infof("Analysing %d layers", len(image.FsLayers))
-
-	var vulnerabilities []*clair.Vulnerability
-
-	c := clair.NewClair(conf.ClairAddr, conf.ClairTimeout)
-	vulnerabilities, err = c.Analyse(image)
-	if err != nil {
-		log.Errorf("Failed to analyze using API: %s", err)
-	} else {
-		if !conf.JSONOutput {
-			log.Infof("Got results from Clair API")
-		}
-	}
-
-	return vulnerabilities, commands, err
 }
 
 func GetImageCommands(conf *config.Config) ([]*docker.FsLayerCommand, error) {

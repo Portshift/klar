@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/Portshift/klar/docker"
 	"github.com/Portshift/klar/utils"
+	"k8s.io/kubernetes/pkg/util/slice"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -17,15 +17,11 @@ type vulnerabilitiesWhitelistYAML struct {
 }
 
 const (
-	OptionClairOutput        = "CLAIR_OUTPUT"
-	OptionClairAddress       = "CLAIR_ADDR"
 	OptionGrypeAddress       = "GRYPE_ADDR"
 	OptionKlarTrace          = "KLAR_TRACE"
-	OptionClairThreshold     = "CLAIR_THRESHOLD"
-	OptionClairTimeout       = "CLAIR_TIMEOUT"
+	OptionSeverityThreshold  = "SEVERITY_THRESHOLD"
+	OptionScanTimeout        = "SCAN_TIMEOUT"
 	OptionDockerTimeout      = "DOCKER_TIMEOUT"
-	OptionJSONOutput         = "JSON_OUTPUT" // deprecate?
-	OptionFormatOutput       = "FORMAT_OUTPUT"
 	OptionDockerUser         = "DOCKER_USER"
 	OptionDockerPassword     = "DOCKER_PASSWORD"
 	OptionDockerToken        = "DOCKER_TOKEN"
@@ -34,31 +30,17 @@ const (
 	OptionDockerPlatformArch = "DOCKER_PLATFORM_ARCH"
 	OptionRegistryInsecure   = "REGISTRY_INSECURE"
 	OptionWhiteListFile      = "WHITELIST_FILE"
-	OptionIgnoreUnfixed      = "IGNORE_UNFIXED"
 	OptionResultServicePath  = "RESULT_SERVICE_PATH"
 )
 
-var Priorities = []string{"Unknown", "Negligible", "Low", "Medium", "High", "Critical", "Defcon1"}
+var severities = []string{"Unknown", "Negligible", "Low", "Medium", "High", "Critical", "Defcon1"}
 
-func parseOutputPriority() (string, error) {
-	clairOutput := Priorities[0]
-	outputEnv := os.Getenv(OptionClairOutput)
-	if outputEnv != "" {
-		output := strings.Title(strings.ToLower(outputEnv))
-		correct := false
-		for _, sev := range Priorities {
-			if sev == output {
-				clairOutput = sev
-				correct = true
-				break
-			}
-		}
-
-		if !correct {
-			return "", fmt.Errorf("Clair output level %s is not supported, only support %v\n", outputEnv, Priorities)
-		}
+func validateThresholdSeverity(severity string) (error) {
+	if !slice.ContainsString(severities, severity, nil) {
+		return fmt.Errorf("invalid saverity threshold: %v", severity)
 	}
-	return clairOutput, nil
+
+	return nil
 }
 
 func parseIntOption(key string) int {
@@ -79,13 +61,11 @@ func parseBoolOption(key string) bool {
 }
 
 type Config struct {
-	ClairAddr         string
 	GrypeAddr         string
-	ClairOutput       string
-	Threshold         int
+	SeverityThreshold string
 	JSONOutput        bool
 	FormatStyle       string
-	ClairTimeout      time.Duration
+	ScanTimeout       time.Duration
 	DockerConfig      docker.Config
 	WhiteListFile     string
 	IgnoreUnfixed     bool
@@ -93,8 +73,6 @@ type Config struct {
 }
 
 func NewConfig(imageName string) (*Config, error) {
-	clairAddr := os.Getenv(OptionClairAddress)
-
 	grypeAddr := os.Getenv(OptionGrypeAddress)
 	if grypeAddr == "" {
 		return nil, fmt.Errorf("grype address must be provided")
@@ -102,14 +80,15 @@ func NewConfig(imageName string) (*Config, error) {
 
 	utils.Trace = os.Getenv(OptionKlarTrace) == "true"
 
-	clairOutput, err := parseOutputPriority()
+	severityThreshold := os.Getenv(OptionSeverityThreshold)
+	err := validateThresholdSeverity(severityThreshold)
 	if err != nil {
 		return nil, err
 	}
 
-	clairTimeout := parseIntOption(OptionClairTimeout)
-	if clairTimeout == 0 {
-		clairTimeout = 1
+	scanTimeout := parseIntOption(OptionScanTimeout)
+	if scanTimeout == 0 {
+		scanTimeout = 1
 	}
 
 	dockerTimeout := parseIntOption(OptionDockerTimeout)
@@ -119,14 +98,9 @@ func NewConfig(imageName string) (*Config, error) {
 
 	return &Config{
 		ResultServicePath: os.Getenv(OptionResultServicePath),
-		ClairAddr:         clairAddr,
 		GrypeAddr:         grypeAddr,
-		ClairOutput:       clairOutput,
-		Threshold:         parseIntOption(OptionClairThreshold),
-		JSONOutput:        false,
-		FormatStyle:       "standard",
-		IgnoreUnfixed:     parseBoolOption(OptionIgnoreUnfixed),
-		ClairTimeout:      time.Duration(clairTimeout) * time.Minute,
+		SeverityThreshold: severityThreshold,
+		ScanTimeout:       time.Duration(scanTimeout) * time.Minute,
 		WhiteListFile:     os.Getenv(OptionWhiteListFile),
 		DockerConfig: docker.Config{
 			ImageName:        imageName,
