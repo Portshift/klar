@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/GoogleCloudPlatform/docker-credential-gcr v1.5.0
-	github.com/Portshift/grype-server/api v0.0.0-20211115000212-14757db5903c
+	github.com/Portshift/grype-server/api v0.0.0-20211115015416-a4e7c9a18079
 	github.com/anchore/grype v0.24.1
 	github.com/anchore/stereoscope v0.0.0-20211024152658-003132a67c10
 	github.com/anchore/syft v0.29.0
