@@ -4,17 +4,11 @@ import (
 	"fmt"
 	"github.com/Portshift/klar/docker"
 	"github.com/Portshift/klar/utils"
-	"k8s.io/kubernetes/pkg/util/slice"
+	"github.com/Portshift/klar/utils/vulnerability"
 	"os"
 	"strconv"
 	"time"
 )
-
-//Used to represent the structure of the whitelist YAML file
-type vulnerabilitiesWhitelistYAML struct {
-	General []string
-	Images  map[string][]string
-}
 
 const (
 	OptionGrypeAddress       = "GRYPE_ADDR"
@@ -32,16 +26,6 @@ const (
 	OptionWhiteListFile      = "WHITELIST_FILE"
 	OptionResultServicePath  = "RESULT_SERVICE_PATH"
 )
-
-var severities = []string{"Unknown", "Negligible", "Low", "Medium", "High", "Critical", "Defcon1"}
-
-func validateThresholdSeverity(severity string) (error) {
-	if !slice.ContainsString(severities, severity, nil) {
-		return fmt.Errorf("invalid saverity threshold: %v", severity)
-	}
-
-	return nil
-}
 
 func parseIntOption(key string) int {
 	val := 0
@@ -81,7 +65,7 @@ func NewConfig(imageName string) (*Config, error) {
 	utils.Trace = os.Getenv(OptionKlarTrace) == "true"
 
 	severityThreshold := os.Getenv(OptionSeverityThreshold)
-	err := validateThresholdSeverity(severityThreshold)
+	err := vulnerability.ValidateSeverity(severityThreshold)
 	if err != nil {
 		return nil, err
 	}
