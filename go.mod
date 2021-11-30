@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/GoogleCloudPlatform/docker-credential-gcr v1.5.0
-	github.com/Portshift/grype-server/api v0.0.0-20211115015416-a4e7c9a18079
+	github.com/Portshift/grype-server/api v0.0.0-20211130120325-f3207a9c9ea1
 	github.com/anchore/grype v0.24.1
 	github.com/anchore/stereoscope v0.0.0-20211024152658-003132a67c10
 	github.com/anchore/syft v0.29.0
@@ -20,8 +20,6 @@ require (
 	k8s.io/api v0.17.4
 	k8s.io/kubernetes v1.17.3
 )
-
-//replace github.com/Portshift/grype-server/api v0.0.0 => /Users/alexeik/go/src/github.com/Portshift/grype-server/api
 
 replace (
 	k8s.io/api => k8s.io/api v0.0.0-20191114100352-16d7abae0d2a

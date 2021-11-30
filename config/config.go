@@ -14,7 +14,6 @@ const (
 	OptionGrypeAddress       = "GRYPE_ADDR"
 	OptionKlarTrace          = "KLAR_TRACE"
 	OptionSeverityThreshold  = "SEVERITY_THRESHOLD"
-	OptionScanTimeout        = "SCAN_TIMEOUT"
 	OptionDockerTimeout      = "DOCKER_TIMEOUT"
 	OptionDockerUser         = "DOCKER_USER"
 	OptionDockerPassword     = "DOCKER_PASSWORD"
@@ -49,11 +48,11 @@ type Config struct {
 	SeverityThreshold string
 	JSONOutput        bool
 	FormatStyle       string
-	ScanTimeout       time.Duration
 	DockerConfig      docker.Config
 	WhiteListFile     string
 	IgnoreUnfixed     bool
 	ResultServicePath string
+	LocalScanDbPath   string
 }
 
 func NewConfig(imageName string) (*Config, error) {
@@ -65,14 +64,12 @@ func NewConfig(imageName string) (*Config, error) {
 	utils.Trace = os.Getenv(OptionKlarTrace) == "true"
 
 	severityThreshold := os.Getenv(OptionSeverityThreshold)
-	err := vulnerability.ValidateSeverity(severityThreshold)
-	if err != nil {
-		return nil, err
-	}
-
-	scanTimeout := parseIntOption(OptionScanTimeout)
-	if scanTimeout == 0 {
-		scanTimeout = 1
+	if severityThreshold == "" {
+		severityThreshold = vulnerability.UnknownVulnerability
+	} else {
+		if err := vulnerability.ValidateSeverity(severityThreshold); err != nil {
+			return nil, err
+		}
 	}
 
 	dockerTimeout := parseIntOption(OptionDockerTimeout)
@@ -84,7 +81,6 @@ func NewConfig(imageName string) (*Config, error) {
 		ResultServicePath: os.Getenv(OptionResultServicePath),
 		GrypeAddr:         grypeAddr,
 		SeverityThreshold: severityThreshold,
-		ScanTimeout:       time.Duration(scanTimeout) * time.Minute,
 		WhiteListFile:     os.Getenv(OptionWhiteListFile),
 		DockerConfig: docker.Config{
 			ImageName:        imageName,

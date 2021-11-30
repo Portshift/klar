@@ -363,7 +363,7 @@ func FetchFsCommands(config *Config) ([]*FsLayerCommand, error) {
 
 	var layerCommands []*FsLayerCommand
 	for i, layer := range layers {
-		layerDiffID, err := layer.DiffID()
+		layerDiffID, err := layer.DiffID() // Grype specifies the Hash of the uncompressed layer in the result vulnerabilities
 		if err != nil {
 			return nil, fmt.Errorf("failed to get layer diffID: %v", err)
 		}

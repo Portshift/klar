@@ -1,7 +1,6 @@
 package run
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
@@ -23,19 +22,10 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
+// ExecuteRemoteGrypeScan Executes the vulnerability scan remotely by invoking the Grype Server. It will fetch the image,
+//// analyze the SBOM and invoke the Grype Server scanner.
 func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
-	src, cleanup, err := source.New(imageName, &anchore_image.RegistryOptions{
-		InsecureSkipTLSVerify: conf.DockerConfig.InsecureTLS,
-		InsecureUseHTTP:       conf.DockerConfig.InsecureRegistry,
-		Credentials: []anchore_image.RegistryCredentials{
-			{
-				Authority: "", // What is this?
-				Username:  conf.DockerConfig.User,
-				Password:  conf.DockerConfig.Password,
-				Token:     conf.DockerConfig.Token,
-			},
-		},
-	})
+	src, cleanup, err := source.New(imageName, createRegistryOptions(conf))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create syft source: %v", err)
 	}
@@ -50,24 +40,9 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 		return nil, nil, fmt.Errorf("failed to encode sbom: %v", err)
 	}
 
-	sbom64 := base64.StdEncoding.EncodeToString(sbomEncoded)
-
-	client := createGrypeClient(conf.GrypeAddr)
-	params := grype_client_operations.NewPostScanSBOMParams().WithBody(&models.SBOM{
-		Sbom: sbom64,
-	})
-	ok, err := client.Operations.PostScanSBOM(params)
+	doc, err := scanSbomWithGrypeServer(conf.GrypeAddr, sbomEncoded)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to send sbom for scan: %v", err)
-	}
-	doc := grype_models.Document{}
-	docB, err := base64.StdEncoding.DecodeString(ok.Payload.Vulnerabilities)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode vulnerabilities: %v", err)
-	}
-	err = json.Unmarshal(docB, &doc)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshall vulnerabilities document: %v", err)
+		return nil, nil, fmt.Errorf("failed to scan sbom using Grype Server: %v", err)
 	}
 
 	commands, err := GetImageCommands(conf)
@@ -75,35 +50,55 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
 	}
 
-	return &doc, commands, nil
+	return doc, commands, nil
 }
 
+func scanSbomWithGrypeServer(serverAddress string, sbom []byte) (*grype_models.Document, error) {
+	client := createGrypeClient(serverAddress)
+	params := grype_client_operations.NewPostScanSBOMParams().WithBody(&models.SBOM{
+		Sbom: sbom,
+	})
+	ok, err := client.Operations.PostScanSBOM(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send sbom for scan: %v", err)
+	}
+	doc := grype_models.Document{}
+
+	err = json.Unmarshal(ok.Payload.Vulnerabilities, &doc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshall vulnerabilities document: %v", err)
+	}
+	return &doc, nil
+}
+
+func validateDBLoad(loadErr error, status *grype_db.Status) error {
+	if loadErr != nil {
+		return fmt.Errorf("failed to load vulnerability db: %w", loadErr)
+	}
+	if status == nil {
+		return fmt.Errorf("unable to determine DB status")
+	}
+	if status.Err != nil {
+		return fmt.Errorf("db could not be loaded: %w", status.Err)
+	}
+	return nil
+}
+
+// ExecuteLocalGrypeScan Executes the vulnerability scan locally without invoking the Grype Server. It will fetch the image,
+// analyze the SBOM, fetch the vulnerability DB and perform the scan.
 func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
 	dbConfig := grype_db.Config{
-		DBRootDir:           "/tmp/",
+		DBRootDir:           conf.LocalScanDbPath,
 		ListingURL:          "https://toolbox-data.anchore.io/grype/databases/listing.json",
 		ValidateByHashOnGet: false,
 	}
-	provider, metadataProvider, dbStatus, err := grype.LoadVulnerabilityDB(dbConfig, true)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load vulnerability DB: %w", err)
-	}
-	if dbStatus == nil {
-		return nil, nil, fmt.Errorf("unable to determine DB status")
+	provider, metadataProvider, dbStatus, dbErr := grype.LoadVulnerabilityDB(dbConfig, true)
+
+	if err := validateDBLoad(dbErr, dbStatus); err != nil {
+		return nil, nil, fmt.Errorf("failed to load DB: %v", err)
 	}
 
-	registryOptions := &anchore_image.RegistryOptions{
-		InsecureSkipTLSVerify: conf.DockerConfig.InsecureTLS,
-		InsecureUseHTTP:       conf.DockerConfig.InsecureRegistry,
-		Credentials: []anchore_image.RegistryCredentials{
-			{
-				Authority: "", // What is this?
-				Username:  conf.DockerConfig.User,
-				Password:  conf.DockerConfig.Password,
-				Token:     conf.DockerConfig.Token,
-			},
-		},
-	}
+	registryOptions := createRegistryOptions(conf)
 	packages, context, err := grype_pkg.Provide(imageName, source.SquashedScope, registryOptions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to analyze packages: %v", err)
@@ -122,6 +117,21 @@ func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models
 	}
 
 	return &doc, commands, nil
+}
+
+func createRegistryOptions(conf *config.Config) *anchore_image.RegistryOptions {
+	registryOptions := &anchore_image.RegistryOptions{
+		InsecureSkipTLSVerify: conf.DockerConfig.InsecureTLS,
+		InsecureUseHTTP:       conf.DockerConfig.InsecureRegistry,
+		Credentials: []anchore_image.RegistryCredentials{
+			{
+				Username:  conf.DockerConfig.User,
+				Password:  conf.DockerConfig.Password,
+				Token:     conf.DockerConfig.Token,
+			},
+		},
+	}
+	return registryOptions
 }
 
 func createGrypeClient(serverAddress string) *grype_client.GrypeServer {

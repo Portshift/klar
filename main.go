@@ -59,7 +59,6 @@ func main() {
 	}
 
 	result.Vulnerabilities = filterVulnerabilities(conf.SeverityThreshold, vulnerabilities)
-	result.Vulnerabilities = vulnerabilities
 	result.LayerCommands = commands
 	result.Success = true
 

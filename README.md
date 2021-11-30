@@ -29,8 +29,6 @@ Klar can be configured via the following environment variables:
 will be outputted. Supported levels are `Unknown`, `Negligible`, `Low`, `Medium`, `High`, `Critical`, `Defcon1`.
 Default is `Unknown`.
   
-* `SCAN_TIMEOUT` - timeout in minutes before Klar cancels the image scanning. Default is `1`
-
 * `DOCKER_USER` - Docker registry account name.
 
 * `DOCKER_PASSWORD` - Docker registry account password.
