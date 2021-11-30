@@ -1,10 +1,12 @@
 package main
 
 import (
-	vulutils "github.com/Portshift/klar/utils/vulnerability"
-	grype_models "github.com/anchore/grype/grype/presenter/models"
 	"reflect"
 	"testing"
+
+	grype_models "github.com/anchore/grype/grype/presenter/models"
+
+	vulutils "github.com/Portshift/klar/utils/vulnerability"
 )
 
 func Test_filterVulnerabilities1(t *testing.T) {

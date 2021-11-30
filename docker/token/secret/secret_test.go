@@ -2,8 +2,9 @@ package secret
 
 import (
 	"context"
-	"github.com/containers/image/v5/docker/reference"
 	"testing"
+
+	"github.com/containers/image/v5/docker/reference"
 )
 
 func TestImagePullSecret_GetCredentials(t *testing.T) {

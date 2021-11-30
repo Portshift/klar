@@ -3,23 +3,24 @@ package run
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/anchore/grype/grype"
 	grype_db "github.com/anchore/grype/grype/db"
 	grype_pkg "github.com/anchore/grype/grype/pkg"
 	grype_models "github.com/anchore/grype/grype/presenter/models"
+	"time"
 
-	grype_client "github.com/Portshift/grype-server/api/client/client"
-	grype_client_operations "github.com/Portshift/grype-server/api/client/client/operations"
-	"github.com/Portshift/grype-server/api/client/models"
-	"github.com/Portshift/klar/config"
-	"github.com/Portshift/klar/docker"
 	anchore_image "github.com/anchore/stereoscope/pkg/image"
 	"github.com/anchore/syft/syft"
 	"github.com/anchore/syft/syft/format"
 	"github.com/anchore/syft/syft/source"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+
+	grype_client "github.com/Portshift/grype-server/api/client/client"
+	grype_client_operations "github.com/Portshift/grype-server/api/client/client/operations"
+	"github.com/Portshift/grype-server/api/client/models"
+	"github.com/Portshift/klar/config"
+	"github.com/Portshift/klar/docker"
 )
 
 // ExecuteRemoteGrypeScan Executes the vulnerability scan remotely by invoking the Grype Server. It will fetch the image,
@@ -40,7 +41,7 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 		return nil, nil, fmt.Errorf("failed to encode sbom: %v", err)
 	}
 
-	doc, err := scanSbomWithGrypeServer(conf.GrypeAddr, sbomEncoded)
+	doc, err := scanSbomWithGrypeServer(conf.GrypeAddr, conf.GrypeServerTimeout, sbomEncoded)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to scan sbom using Grype Server: %v", err)
 	}
@@ -53,11 +54,11 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 	return doc, commands, nil
 }
 
-func scanSbomWithGrypeServer(serverAddress string, sbom []byte) (*grype_models.Document, error) {
+func scanSbomWithGrypeServer(serverAddress string, timeout time.Duration, sbom []byte) (*grype_models.Document, error) {
 	client := createGrypeClient(serverAddress)
 	params := grype_client_operations.NewPostScanSBOMParams().WithBody(&models.SBOM{
 		Sbom: sbom,
-	})
+	}).WithTimeout(timeout)
 	ok, err := client.Operations.PostScanSBOM(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send sbom for scan: %v", err)
@@ -125,9 +126,9 @@ func createRegistryOptions(conf *config.Config) *anchore_image.RegistryOptions {
 		InsecureUseHTTP:       conf.DockerConfig.InsecureRegistry,
 		Credentials: []anchore_image.RegistryCredentials{
 			{
-				Username:  conf.DockerConfig.User,
-				Password:  conf.DockerConfig.Password,
-				Token:     conf.DockerConfig.Token,
+				Username: conf.DockerConfig.User,
+				Password: conf.DockerConfig.Password,
+				Token:    conf.DockerConfig.Token,
 			},
 		},
 	}

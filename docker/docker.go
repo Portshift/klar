@@ -16,7 +16,6 @@ import (
 
 	"github.com/Portshift/klar/types"
 
-	"github.com/Portshift/klar/docker/token"
 	"github.com/containers/image/v5/docker/reference"
 	docker_manifest "github.com/containers/image/v5/manifest"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -26,6 +25,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
+
+	"github.com/Portshift/klar/docker/token"
 
 	containerregistry_v1 "github.com/google/go-containerregistry/pkg/v1"
 

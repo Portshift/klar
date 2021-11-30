@@ -1,8 +1,9 @@
 package gcr
 
 import (
-	"github.com/containers/image/v5/docker/reference"
 	"testing"
+
+	"github.com/containers/image/v5/docker/reference"
 )
 
 func TestGCR_IsSupported(t *testing.T) {

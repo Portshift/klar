@@ -2,16 +2,18 @@ package config
 
 import (
 	"fmt"
-	"github.com/Portshift/klar/docker"
-	"github.com/Portshift/klar/utils"
-	"github.com/Portshift/klar/utils/vulnerability"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/Portshift/klar/docker"
+	"github.com/Portshift/klar/utils"
+	"github.com/Portshift/klar/utils/vulnerability"
 )
 
 const (
 	OptionGrypeAddress       = "GRYPE_ADDR"
+	OptionGrypeServerTimeout = "GRYPE_SERVER_TIMEOUT"
 	OptionKlarTrace          = "KLAR_TRACE"
 	OptionSeverityThreshold  = "SEVERITY_THRESHOLD"
 	OptionDockerTimeout      = "DOCKER_TIMEOUT"
@@ -44,15 +46,16 @@ func parseBoolOption(key string) bool {
 }
 
 type Config struct {
-	GrypeAddr         string
-	SeverityThreshold string
-	JSONOutput        bool
-	FormatStyle       string
-	DockerConfig      docker.Config
-	WhiteListFile     string
-	IgnoreUnfixed     bool
-	ResultServicePath string
-	LocalScanDbPath   string
+	GrypeAddr          string
+	GrypeServerTimeout time.Duration
+	SeverityThreshold  string
+	JSONOutput         bool
+	FormatStyle        string
+	DockerConfig       docker.Config
+	WhiteListFile      string
+	IgnoreUnfixed      bool
+	ResultServicePath  string
+	LocalScanDbPath    string
 }
 
 func NewConfig(imageName string) (*Config, error) {
@@ -72,16 +75,22 @@ func NewConfig(imageName string) (*Config, error) {
 		}
 	}
 
+	grypeServerTimeout := parseIntOption(OptionGrypeServerTimeout)
+	if grypeServerTimeout == 0 {
+		grypeServerTimeout = 1
+	}
+
 	dockerTimeout := parseIntOption(OptionDockerTimeout)
 	if dockerTimeout == 0 {
 		dockerTimeout = 1
 	}
 
 	return &Config{
-		ResultServicePath: os.Getenv(OptionResultServicePath),
-		GrypeAddr:         grypeAddr,
-		SeverityThreshold: severityThreshold,
-		WhiteListFile:     os.Getenv(OptionWhiteListFile),
+		ResultServicePath:  os.Getenv(OptionResultServicePath),
+		GrypeAddr:          grypeAddr,
+		GrypeServerTimeout: time.Duration(grypeServerTimeout) * time.Minute,
+		SeverityThreshold:  severityThreshold,
+		WhiteListFile:      os.Getenv(OptionWhiteListFile),
 		DockerConfig: docker.Config{
 			ImageName:        imageName,
 			User:             os.Getenv(OptionDockerUser),

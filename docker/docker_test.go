@@ -3,12 +3,13 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
-	docker_manifest "github.com/containers/image/v5/manifest"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	docker_manifest "github.com/containers/image/v5/manifest"
 )
 
 func TestNewImage(t *testing.T) {

@@ -25,6 +25,8 @@ Klar can be configured via the following environment variables:
 
 * `GRYPE_ADDR` - address of Grype server.
 
+* `GRYPE_SERVER_TIMEOUT` - timeout in minutes before Klar cancels the image scanning request to Grype Server. Default is `1`
+  
 * `SEVERITY_THRESHOLD` - severity level threshold, vulnerabilities with severity level higher than or equal to this threshold
 will be outputted. Supported levels are `Unknown`, `Negligible`, `Low`, `Medium`, `High`, `Critical`, `Defcon1`.
 Default is `Unknown`.

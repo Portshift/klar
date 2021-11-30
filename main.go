@@ -1,16 +1,19 @@
 package main
 
 import (
+	grype_models "github.com/anchore/grype/grype/presenter/models"
+
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/run"
 	"github.com/Portshift/klar/types"
-	grype_models "github.com/anchore/grype/grype/presenter/models"
 
 	"fmt"
+	"os"
+
+	log "github.com/sirupsen/logrus"
+
 	"github.com/Portshift/klar/forwarding"
 	vulutils "github.com/Portshift/klar/utils/vulnerability"
-	log "github.com/sirupsen/logrus"
-	"os"
 )
 
 func exit(code int, conf *config.Config, scanResults *forwarding.ImageVulnerabilities) {
@@ -75,7 +78,7 @@ func initLogs() {
 	}
 }
 
-func filterVulnerabilities(severityThresholdStr string, vulnerabilities *grype_models.Document) *grype_models.Document{
+func filterVulnerabilities(severityThresholdStr string, vulnerabilities *grype_models.Document) *grype_models.Document {
 	var filtered []grype_models.Match
 
 	severityThreshold := vulutils.GetSeverityFromString(severityThresholdStr)
