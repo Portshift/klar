@@ -10,7 +10,7 @@ import (
 func TestImagePullSecret_GetCredentials(t *testing.T) {
 	gcrImage, _ := reference.ParseNormalizedNamed("gcr.io/library/image:123")
 	gcrImageSpecific, _ := reference.ParseNormalizedNamed("gcr.io/more/specific:123")
-	//noMatch, _ := reference.ParseNormalizedNamed("no/match:123")
+	noMatch, _ := reference.ParseNormalizedNamed("no/match:123")
 	imageNoScheme, _ := reference.ParseNormalizedNamed("foo.example.com/image:123")
 	imageNoDefaultRegistry, _ := reference.ParseNormalizedNamed("foo")
 	type fields struct {
@@ -52,18 +52,18 @@ func TestImagePullSecret_GetCredentials(t *testing.T) {
 			wantPassword: "io/more/specific",
 			wantErr:      false,
 		},
-		//{ //TODO: WHY IS THIS FAILING????
-		//	name: "no match",
-		//	fields: fields{
-		//		body: "{\"auths\":{\"gcr.io\":{\"username\":\"gcr\",\"password\":\"io\",\"auth\":\"Z2NyOmlv\"},\"gcr.io/more/specific\":{\"username\":\"gcr\",\"password\":\"io/more/specific\",\"auth\":\"Z2NyOmlvL21vcmUvc3BlY2lmaWM=\"},\"http://foo.example.com\":{\"username\":\"foo\",\"password\":\"bar\",\"auth\":\"Zm9vOmJhcg==\"}}}",
-		//	},
-		//	args: args{
-		//		named: noMatch,
-		//	},
-		//	wantUsername: "",
-		//	wantPassword: "",
-		//	wantErr:      true,
-		//},
+		{
+			name: "no match",
+			fields: fields{
+				body: "{\"auths\":{\"gcr.io\":{\"username\":\"gcr\",\"password\":\"io\",\"auth\":\"Z2NyOmlv\"},\"gcr.io/more/specific\":{\"username\":\"gcr\",\"password\":\"io/more/specific\",\"auth\":\"Z2NyOmlvL21vcmUvc3BlY2lmaWM=\"},\"http://foo.example.com\":{\"username\":\"foo\",\"password\":\"bar\",\"auth\":\"Zm9vOmJhcg==\"}}}",
+			},
+			args: args{
+				named: noMatch,
+			},
+			wantUsername: "",
+			wantPassword: "",
+			wantErr:      true,
+		},
 		{
 			name: "match registry with scheme",
 			fields: fields{

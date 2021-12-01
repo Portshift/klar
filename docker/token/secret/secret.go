@@ -44,6 +44,9 @@ func (s *ImagePullSecret) GetCredentials(_ context.Context, named reference.Name
 	if !credentialsExist {
 		return "", "", fmt.Errorf("failed to get image credentials. image=%v", named.Name())
 	}
+	if credentials[0].Username == "" || credentials[0].Password == "" {
+		return "", "", fmt.Errorf("got empty image credentials. image=%v", named.Name())
+	}
 
 	// using the first credentials found as they are the most specific match for this image
 	return credentials[0].Username, credentials[0].Password, nil
