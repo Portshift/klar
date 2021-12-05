@@ -26,6 +26,11 @@ import (
 // ExecuteRemoteGrypeScan Executes the vulnerability scan remotely by invoking the Grype Server. It will fetch the image,
 //// analyze the SBOM and invoke the Grype Server scanner.
 func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
+	// Commands fetching will update the config with the fetched registry credentials (need to run before createRegistryOptions())
+	commands, err := GetImageCommands(conf)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
+	}
 	src, cleanup, err := source.New(imageName, createRegistryOptions(conf))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create syft source: %v", err)
@@ -44,11 +49,6 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 	doc, err := scanSbomWithGrypeServer(conf.GrypeAddr, conf.GrypeServerTimeout, sbomEncoded)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to scan sbom using Grype Server: %v", err)
-	}
-
-	commands, err := GetImageCommands(conf)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
 	}
 
 	return doc, commands, nil
@@ -99,6 +99,12 @@ func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models
 		return nil, nil, fmt.Errorf("failed to load DB: %v", err)
 	}
 
+	// Commands fetching will update the config with the fetched registry credentials (need to run before createRegistryOptions())
+	commands, err := GetImageCommands(conf)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
+	}
+
 	registryOptions := createRegistryOptions(conf)
 	packages, context, err := grype_pkg.Provide(imageName, source.SquashedScope, registryOptions)
 	if err != nil {
@@ -110,11 +116,6 @@ func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models
 	doc, err := grype_models.NewDocument(packages, context, allMatches, nil, metadataProvider, nil, dbStatus)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create document: %v", err)
-	}
-
-	commands, err := GetImageCommands(conf)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
 	}
 
 	return &doc, commands, nil
