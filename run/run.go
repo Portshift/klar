@@ -55,10 +55,10 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 }
 
 func setImageSource(imageName string, conf *config.Config) string {
-	if conf.IsRegistryImage {
-		return "registry:"+imageName
-	} else {
+	if conf.DockerConfig.Local {
 		return "docker:"+imageName
+	} else {
+		return "registry:"+imageName
 	}
 }
 

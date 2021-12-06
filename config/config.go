@@ -56,7 +56,6 @@ type Config struct {
 	IgnoreUnfixed        bool
 	ResultServicePath    string
 	StandaloneScanDbPath string
-	IsRegistryImage      bool	// Indicates whether the image should be fetched from the registry (otherwise uses docker daemon)
 }
 
 func NewConfig(imageName string) (*Config, error) {

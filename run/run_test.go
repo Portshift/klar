@@ -2,6 +2,7 @@ package run
 
 import (
 	"github.com/Portshift/klar/config"
+	"github.com/Portshift/klar/docker"
 	"testing"
 )
 
@@ -20,7 +21,9 @@ func Test_setImageSource(t *testing.T) {
 			args: args{
 				imageName: "test",
 				conf: &config.Config{
-					IsRegistryImage:      true,
+					DockerConfig:      docker.Config{
+						Local:            false,
+					},
 				},
 			},
 			want: "registry:test",
@@ -30,7 +33,9 @@ func Test_setImageSource(t *testing.T) {
 			args: args{
 				imageName: "test",
 				conf: &config.Config{
-					IsRegistryImage:      false,
+					DockerConfig:      docker.Config{
+						Local:            true,
+					},
 				},
 			},
 			want: "docker:test",
