@@ -31,7 +31,7 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
 	}
-	src, cleanup, err := source.New(imageName, createRegistryOptions(conf))
+	src, cleanup, err := source.New(setImageSource(imageName, conf), createRegistryOptions(conf))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create syft source: %v", err)
 	}
@@ -52,6 +52,14 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 	}
 
 	return doc, commands, nil
+}
+
+func setImageSource(imageName string, conf *config.Config) string {
+	if conf.IsRegistryImage {
+		return "registry:"+imageName
+	} else {
+		return "docker:"+imageName
+	}
 }
 
 func scanSbomWithGrypeServer(serverAddress string, timeout time.Duration, sbom []byte) (*grype_models.Document, error) {
@@ -85,11 +93,11 @@ func validateDBLoad(loadErr error, status *grype_db.Status) error {
 	return nil
 }
 
-// ExecuteLocalGrypeScan Executes the vulnerability scan locally without invoking the Grype Server. It will fetch the image,
+// ExecuteStandaloneGrypeScan Executes the vulnerability scan locally without invoking the Grype Server. It will fetch the image,
 // analyze the SBOM, fetch the vulnerability DB and perform the scan.
-func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
+func ExecuteStandaloneGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
 	dbConfig := grype_db.Config{
-		DBRootDir:           conf.LocalScanDbPath,
+		DBRootDir:           conf.StandaloneScanDbPath,
 		ListingURL:          "https://toolbox-data.anchore.io/grype/databases/listing.json",
 		ValidateByHashOnGet: false,
 	}
@@ -106,7 +114,8 @@ func ExecuteLocalGrypeScan(imageName string, conf *config.Config) (*grype_models
 	}
 
 	registryOptions := createRegistryOptions(conf)
-	packages, context, err := grype_pkg.Provide(imageName, source.SquashedScope, registryOptions)
+
+	packages, context, err := grype_pkg.Provide(setImageSource(imageName, conf), source.SquashedScope, registryOptions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to analyze packages: %v", err)
 	}

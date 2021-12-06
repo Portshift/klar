@@ -46,16 +46,17 @@ func parseBoolOption(key string) bool {
 }
 
 type Config struct {
-	GrypeAddr          string
-	GrypeServerTimeout time.Duration
-	SeverityThreshold  string
-	JSONOutput         bool
-	FormatStyle        string
-	DockerConfig       docker.Config
-	WhiteListFile      string
-	IgnoreUnfixed      bool
-	ResultServicePath  string
-	LocalScanDbPath    string
+	GrypeAddr            string
+	GrypeServerTimeout   time.Duration
+	SeverityThreshold    string
+	JSONOutput           bool
+	FormatStyle          string
+	DockerConfig         docker.Config
+	WhiteListFile        string
+	IgnoreUnfixed        bool
+	ResultServicePath    string
+	StandaloneScanDbPath string
+	IsRegistryImage      bool	// Indicates whether the image should be fetched from the registry (otherwise uses docker daemon)
 }
 
 func NewConfig(imageName string) (*Config, error) {
