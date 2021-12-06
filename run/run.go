@@ -7,6 +7,7 @@ import (
 	grype_db "github.com/anchore/grype/grype/db"
 	grype_pkg "github.com/anchore/grype/grype/pkg"
 	grype_models "github.com/anchore/grype/grype/presenter/models"
+	log "github.com/sirupsen/logrus"
 	"time"
 
 	anchore_image "github.com/anchore/stereoscope/pkg/image"
@@ -26,8 +27,8 @@ import (
 // ExecuteRemoteGrypeScan Executes the vulnerability scan remotely by invoking the Grype Server. It will fetch the image,
 //// analyze the SBOM and invoke the Grype Server scanner.
 func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_models.Document, []*docker.FsLayerCommand, error) {
-	// Commands fetching will update the config with the fetched registry credentials (need to run before createRegistryOptions())
-	commands, err := GetImageCommands(conf)
+	updateConfigCredentialsIfNeeded(imageName, conf)
+	commands, err := docker.FetchFsCommands(&conf.DockerConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
 	}
@@ -107,8 +108,9 @@ func ExecuteStandaloneGrypeScan(imageName string, conf *config.Config) (*grype_m
 		return nil, nil, fmt.Errorf("failed to load DB: %v", err)
 	}
 
-	// Commands fetching will update the config with the fetched registry credentials (need to run before createRegistryOptions())
-	commands, err := GetImageCommands(conf)
+	updateConfigCredentialsIfNeeded(imageName, conf)
+
+	commands, err := docker.FetchFsCommands(&conf.DockerConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
 	}
@@ -128,6 +130,17 @@ func ExecuteStandaloneGrypeScan(imageName string, conf *config.Config) (*grype_m
 	}
 
 	return &doc, commands, nil
+}
+func updateConfigCredentialsIfNeeded(imageName string, conf *config.Config) {
+	if conf.DockerConfig.User == "" || conf.DockerConfig.Password == "" {
+		username, password, err := docker.ExtractCredentials(imageName)
+		if err != nil {
+			log.Warnf("Failed to extract credentials for image %v: %v", imageName, err)
+			return
+		}
+		conf.DockerConfig.User = username
+		conf.DockerConfig.Password = password
+	}
 }
 
 func createRegistryOptions(conf *config.Config) *anchore_image.RegistryOptions {
@@ -150,26 +163,4 @@ func createGrypeClient(serverAddress string) *grype_client.GrypeServer {
 	cfg.WithHost(serverAddress)
 	transport := httptransport.New(cfg.Host, cfg.BasePath, cfg.Schemes)
 	return grype_client.New(transport, strfmt.Default)
-}
-
-func GetImageCommands(conf *config.Config) ([]*docker.FsLayerCommand, error) {
-	image, err := docker.NewImage(&conf.DockerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse name: %v", err)
-	}
-
-	err = image.Pull()
-	if err != nil {
-		return nil, fmt.Errorf("failed to pull image: %w", err)
-	}
-
-	if err := image.FetchFsCommands(&conf.DockerConfig); err != nil {
-		return nil, fmt.Errorf("failed to fetch layer commands: %v", err)
-	}
-
-	if len(image.FsLayers) == 0 {
-		return nil, fmt.Errorf("failed to pull pull fsLayers")
-	}
-
-	return image.GetFsCommands(), nil
 }
