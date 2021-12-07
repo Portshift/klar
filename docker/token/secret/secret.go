@@ -31,8 +31,8 @@ func (s *ImagePullSecret) GetCredentials(_ context.Context, named reference.Name
 
 	secretDataMap[corev1.DockerConfigJsonKey] = []byte(s.body)
 	secrets := []corev1.Secret{{
-		Data:       secretDataMap,
-		Type:       corev1.SecretTypeDockerConfigJson,
+		Data: secretDataMap,
+		Type: corev1.SecretTypeDockerConfigJson,
 	}}
 
 	dockerKeyring, err := credprovsecrets.MakeDockerKeyring(secrets, credentialprovider.NewDockerKeyring())
@@ -43,6 +43,9 @@ func (s *ImagePullSecret) GetCredentials(_ context.Context, named reference.Name
 	credentials, credentialsExist := dockerKeyring.Lookup(named.Name())
 	if !credentialsExist {
 		return "", "", fmt.Errorf("failed to get image credentials. image=%v", named.Name())
+	}
+	if credentials[0].Username == "" || credentials[0].Password == "" {
+		return "", "", fmt.Errorf("got empty image credentials. image=%v", named.Name())
 	}
 
 	// using the first credentials found as they are the most specific match for this image

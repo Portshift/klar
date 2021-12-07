@@ -1,8 +1,9 @@
 package ecr
 
 import (
-	"github.com/containers/image/v5/docker/reference"
 	"testing"
+
+	"github.com/containers/image/v5/docker/reference"
 )
 
 func TestECR_IsSupported(t *testing.T) {

@@ -2,11 +2,13 @@ package token
 
 import (
 	"context"
+
+	"github.com/containers/image/v5/docker/reference"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/Portshift/klar/docker/token/ecr"
 	"github.com/Portshift/klar/docker/token/gcr"
 	"github.com/Portshift/klar/docker/token/secret"
-	"github.com/containers/image/v5/docker/reference"
-	log "github.com/sirupsen/logrus"
 )
 
 type CredExtractor struct {
@@ -22,7 +24,7 @@ type Extractor interface {
 	GetCredentials(ctx context.Context, named reference.Named) (username, password string, err error)
 }
 
-func CreateCredExtractor() *CredExtractor{
+func CreateCredExtractor() *CredExtractor {
 	return &CredExtractor{
 		extractors: []Extractor{
 			// Note: ImagePullSecret must be first

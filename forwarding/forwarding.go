@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Portshift/klar/clair"
-	"github.com/Portshift/klar/docker"
-	"github.com/Portshift/klar/types"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+
+	grype_models "github.com/anchore/grype/grype/presenter/models"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/Portshift/klar/docker"
+	"github.com/Portshift/klar/types"
 )
 
 type ImageVulnerabilities struct {
-	Vulnerabilities []*clair.Vulnerability   `json:"vulnerability"`
+	Vulnerabilities *grype_models.Document   `json:"vulnerability"`
 	LayerCommands   []*docker.FsLayerCommand `json:"layerCommands"`
 	Image           string                   `json:"image"`
 	Success         bool                     `json:"success"`

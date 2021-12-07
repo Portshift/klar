@@ -1,4 +1,4 @@
-FROM golang:1.14.4-alpine AS builder
+FROM golang:1.16-alpine AS builder
 WORKDIR /go/src/github.com/Portshift/klar/
 COPY ./ ./
 RUN CGO_ENABLED=0 go build -o klar .
@@ -17,7 +17,7 @@ ARG BUILD_DATE
 ARG VCS_REF
 LABEL org.label-schema.build-date=$BUILD_DATE \
     org.label-schema.name="klar" \
-    org.label-schema.description="Simple tool to analyze images stored in a private or public Docker registry for security vulnerabilities using Clair" \
+    org.label-schema.description="A tool to analyze images stored in a private or public Docker registry for security vulnerabilities using Grype" \
     org.label-schema.url="https://github.com/Portshift/klar" \
     org.label-schema.vcs-ref=$VCS_REF \
     org.label-schema.vcs-url="https://github.com/Portshift/klar"
@@ -28,7 +28,7 @@ LABEL name="klar" \
       vendor="Portshift" \
       version=${IMAGE_VERSION} \
       release=${IMAGE_VERSION} \
-      summary="Integration of Clair and Docker Registry" \
-      description="Simple tool to analyze images stored in a private or public Docker registry for security vulnerabilities using Clair"
+      summary="Integration of Grype and Docker Registry" \
+      description="A tool to analyze images stored in a private or public Docker registry for security vulnerabilities using Grype"
 
 USER 1000

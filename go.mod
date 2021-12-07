@@ -1,16 +1,21 @@
 module github.com/Portshift/klar
 
-go 1.13
+go 1.16
 
 require (
 	github.com/GoogleCloudPlatform/docker-credential-gcr v1.5.0
-	github.com/aquasecurity/fanal v0.0.0-20201028122920-48a25d865182
-	github.com/aws/aws-sdk-go v1.27.1
+	github.com/Portshift/grype-server/api v0.0.0-20211207093535-d9b3f40acb43
+	github.com/anchore/grype v0.24.1
+	github.com/anchore/stereoscope v0.0.0-20211024152658-003132a67c10
+	github.com/anchore/syft v0.29.0
+	github.com/aws/aws-sdk-go v1.34.28
 	github.com/containers/image/v5 v5.4.4
-	github.com/golang/mock v1.2.0
-	github.com/google/go-containerregistry v0.0.0-20200331213917-3d03ed9b1ca2
+	github.com/go-openapi/runtime v0.21.0
+	github.com/go-openapi/strfmt v0.21.0
+	github.com/golang/mock v1.4.3
+	github.com/google/go-containerregistry v0.1.1
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	k8s.io/api v0.17.4
 	k8s.io/kubernetes v1.17.3
