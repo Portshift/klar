@@ -3,12 +3,17 @@ package run
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/anchore/grype/grype"
 	grype_db "github.com/anchore/grype/grype/db"
 	grype_pkg "github.com/anchore/grype/grype/pkg"
 	grype_models "github.com/anchore/grype/grype/presenter/models"
-	log "github.com/sirupsen/logrus"
+
 	"time"
+
+	"github.com/anchore/syft/syft/pkg/cataloger"
+	_sbom "github.com/anchore/syft/syft/sbom"
+	log "github.com/sirupsen/logrus"
 
 	anchore_image "github.com/anchore/stereoscope/pkg/image"
 	"github.com/anchore/syft/syft"
@@ -32,17 +37,24 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get image commands : %v", err)
 	}
-	src, cleanup, err := source.New(setImageSource(imageName, conf), createRegistryOptions(conf))
+	src, cleanup, err := source.New(setImageSource(imageName, conf), createRegistryOptions(conf), nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create syft source: %v", err)
 	}
 	defer cleanup()
 
-	catalog, distro, err := syft.CatalogPackages(src, source.SquashedScope)
+	catalog, _, distro, err := syft.CatalogPackages(src, cataloger.DefaultConfig())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to catalog packages: %v", err)
 	}
-	sbomEncoded, err := syft.Encode(catalog, &src.Metadata, distro, source.SquashedScope, format.JSONOption)
+	sbom := _sbom.SBOM{
+		Artifacts: _sbom.Artifacts{
+			PackageCatalog:    catalog,
+			LinuxDistribution: distro,
+		},
+		Source: src.Metadata,
+	}
+	sbomEncoded, err := syft.Encode(sbom, format.JSONOption)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encode sbom: %v", err)
 	}
@@ -57,9 +69,9 @@ func ExecuteRemoteGrypeScan(imageName string, conf *config.Config) (*grype_model
 
 func setImageSource(imageName string, conf *config.Config) string {
 	if conf.DockerConfig.Local {
-		return "docker:"+imageName
+		return "docker:" + imageName
 	} else {
-		return "registry:"+imageName
+		return "registry:" + imageName
 	}
 }
 
@@ -117,7 +129,14 @@ func ExecuteStandaloneGrypeScan(imageName string, conf *config.Config) (*grype_m
 
 	registryOptions := createRegistryOptions(conf)
 
-	packages, context, err := grype_pkg.Provide(setImageSource(imageName, conf), source.SquashedScope, registryOptions)
+	providerConfig := grype_pkg.ProviderConfig{
+		RegistryOptions: registryOptions,
+		CatalogingOptions: cataloger.Config{
+			Search: cataloger.DefaultSearchConfig(),
+		},
+	}
+
+	packages, context, err := grype_pkg.Provide(setImageSource(imageName, conf), providerConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to analyze packages: %v", err)
 	}
