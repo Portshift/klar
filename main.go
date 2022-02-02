@@ -2,6 +2,7 @@ package main
 
 import (
 	grype_models "github.com/anchore/grype/grype/presenter/models"
+	"strings"
 
 	"github.com/Portshift/klar/config"
 	"github.com/Portshift/klar/run"
@@ -47,6 +48,8 @@ func main() {
 
 	result.Image = imageName
 
+	imageName = setKubeRegistryIfNeeded(imageName)
+
 	conf, err := config.NewConfig(imageName)
 	if err != nil {
 		log.Errorf("Invalid options: %v", err)
@@ -70,6 +73,15 @@ func main() {
 	if err := forwarding.SendScanResults(conf.ResultServicePath, result); err != nil {
 		log.Errorf("Failed to send scan results: %v", err)
 	}
+}
+
+func setKubeRegistryIfNeeded(imageName string) string {
+	if strings.HasPrefix(imageName, "localhost:") {
+		imageName = strings.TrimPrefix(imageName, "localhost:")
+		imageName = "kube-registry.default.svc.cluster.local:" + imageName
+	}
+
+	return imageName
 }
 
 func initLogs() {

@@ -153,3 +153,43 @@ func Test_filterVulnerabilities1(t *testing.T) {
 		})
 	}
 }
+
+func Test_setKubeRegistryIfNeeded(t *testing.T) {
+	type args struct {
+		imageName string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "not localhost prefix - should not be updated",
+			args: args{
+				imageName: "test",
+			},
+			want: "test",
+		},
+		{
+			name: "with localhost prefix - should be updated",
+			args: args{
+				imageName: "localhost:30000/blabla:tag",
+			},
+			want: "kube-registry.default.svc.cluster.local:30000/blabla:tag",
+		},
+		{
+			name: "with localhost, but not prefix - should not be updated",
+			args: args{
+				imageName: "test/localhost:tag",
+			},
+			want: "test/localhost:tag",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := setKubeRegistryIfNeeded(tt.args.imageName); got != tt.want {
+				t.Errorf("setKubeRegistryIfNeeded() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
