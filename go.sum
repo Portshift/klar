@@ -104,6 +104,8 @@ github.com/Portshift/grype-server/api v0.0.0-20211207093535-d9b3f40acb43 h1:EMg5
 github.com/Portshift/grype-server/api v0.0.0-20211207093535-d9b3f40acb43/go.mod h1:9QJNVuh8EOzGAZDvQZu2mhHU1E+HrKVQboaVo2cck7U=
 github.com/Portshift/grype-server/api v0.0.0-20220130174229-8f115ad37db5 h1:lTINym9cV+8KtPG6JlarjsVLtbaEx64jKoYZkNb9yJo=
 github.com/Portshift/grype-server/api v0.0.0-20220130174229-8f115ad37db5/go.mod h1:9QJNVuh8EOzGAZDvQZu2mhHU1E+HrKVQboaVo2cck7U=
+github.com/Portshift/grype-server/api v0.0.0-20220202131026-d7ff01973706 h1:0k1RtaaMPS7HybsyAPaO5Nt98MYYQQ8YGEaBagKNQNo=
+github.com/Portshift/grype-server/api v0.0.0-20220202131026-d7ff01973706/go.mod h1:9QJNVuh8EOzGAZDvQZu2mhHU1E+HrKVQboaVo2cck7U=
 github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBKeU+7zCJoLcc=
 github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/purell v1.1.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
