@@ -48,12 +48,15 @@ func main() {
 
 	result.Image = imageName
 
-	imageName = setKubeRegistryIfNeeded(imageName)
+	imageName, kubeRegistry := setKubeRegistryIfNeeded(imageName)
 
 	conf, err := config.NewConfig(imageName)
 	if err != nil {
 		log.Errorf("Invalid options: %v", err)
 		os.Exit(2)
+	}
+	if kubeRegistry {
+		conf.DockerConfig.InsecureRegistry = true
 	}
 
 	vulnerabilities, commands, err := run.ExecuteRemoteGrypeScan(imageName, conf)
@@ -75,13 +78,16 @@ func main() {
 	}
 }
 
-func setKubeRegistryIfNeeded(imageName string) string {
-	if strings.HasPrefix(imageName, "localhost:") {
-		imageName = strings.TrimPrefix(imageName, "localhost:")
-		imageName = "kube-registry.default.svc.cluster.local:" + imageName
+func setKubeRegistryIfNeeded(imageName string) (string, bool) {
+	if strings.HasPrefix(imageName, "localhost:30000") {
+		imageName = strings.TrimPrefix(imageName, "localhost:30000")
+		return "100.64.0.9:5000" + imageName, true
+	}
+	if strings.HasPrefix(imageName, "100.64.0.9:5000") {
+		return imageName, true
 	}
 
-	return imageName
+	return imageName, false
 }
 
 func initLogs() {
