@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
+)asd
 
 //Used to represent the structure of the whitelist YAML file
 type vulnerabilitiesWhitelistYAML struct {
