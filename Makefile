@@ -14,7 +14,7 @@ build-docker:
 		--build-arg VCS_REF=$(shell git rev-parse --short HEAD) \
 		--build-arg IMAGE_VERSION=${VERSION} \
 			-t $(IMAGE_NAME) .
-
+asd
 docker.push: build-docker
 	docker push $(IMAGE_NAME)
 
